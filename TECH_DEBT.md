@@ -412,7 +412,31 @@ Generation,Current_Mutation_Rate,Current_Crossover_Rate
 
 **Status**: ✅ **WORKING PERFECTLY** - Diagnostics system highly reliable
 
-### 13. Stagnation and Restart System Analysis
+### 13. Unsampled O(n²) Performance Patterns (2025-09-22 Code Audit)
+**Location**: Genetic algorithm modules
+**Discovered**: Comprehensive code audit following CODING_GUIDELINES.md
+
+**Performance Issues Identified**:
+- **genetic/fitness_sharing.py:114-115** - Pairwise distance calculation without sampling
+- **genetic/island_model.py:394-395** - Population diversity calculation without sampling
+- **Impact**: Minor performance degradation for large populations (>50 individuals)
+
+**Mitigation Status**:
+- **utils/diversity_metrics.py** - ✅ **Properly implements sampling** for populations > 50
+- **Most O(n²) patterns** - ✅ **Algorithmically necessary** for genetic operations
+- **Remaining cases** - ⚠️ **Need sampling implementation** for consistency
+
+**Recommended Fix**:
+```python
+# For populations > 50, sample pairs to avoid O(n²) performance
+if len(population) > 50:
+    max_samples = min(1000, len(population) * (len(population) - 1) // 2)
+    # Use sampling approach from utils/diversity_metrics.py
+```
+
+**Debugging Priority**: 🚨 **MEDIUM** - Performance optimization for large populations
+
+### 14. Stagnation and Restart System Analysis
 **Location**: Intelligent restart and stagnation detection
 **Discovered**: Fitness progression analysis
 
@@ -427,6 +451,8 @@ Generation,Current_Mutation_Rate,Current_Crossover_Rate
 **Debugging Priority**: 🚨 **MEDIUM** - Restart mechanisms may be non-functional
 
 ## Priority Assessment
+
+**📋 Implementation Guidance**: See DEBUGGING.md for step-by-step implementation procedures for all issues listed below. DEBUGGING.md phases correspond to these priority levels.
 
 **🚨 CRITICAL PRIORITY** (System failures requiring immediate attention):
 - Lineage tracking system complete failure (confirmed by genetic operations data inconsistency)
@@ -444,10 +470,13 @@ Generation,Current_Mutation_Rate,Current_Crossover_Rate
 - Dashboard alert system threshold calibration (98% false positive rate)
 - Remove hardcoded getattr fallbacks (confusion factor)
 - Consolidate diversity calculation paths (maintenance burden)
+- **Add sampling to remaining O(n²) loops** (performance optimization - from 2025-09-22 audit)
+- **Update CODING_GUIDELINES.md with genetic algorithm patterns** (documentation debt)
 
 **📋 STANDARD PRIORITY** (Architectural improvements):
 - Simplify conditional logic (code clarity)
 - Remove duplicate spatial calculations (redundancy)
+- **Consider extracting calculate_selection_pressure from CLI to utils** (if used elsewhere - from audit)
 
 **🔮 LOW PRIORITY** (Future architecture work):
 - Extract diversity service (major refactoring)

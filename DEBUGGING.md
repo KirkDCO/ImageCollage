@@ -66,25 +66,66 @@ The system uses a **genetic algorithm** to evolve optimal arrangements of source
 **Approach**: Minimal tests, system exploration, baseline establishment
 **Confidence**: 95% - Just verification and learning
 
-### **Phase 1**: High-Confidence Fixes (8-12 hours)
-**Goal**: Fix clear integration bugs and configuration issues
-**Approach**: Surgical fixes to working systems
-**Confidence**: 90-95% - These are straightforward bugs
+### **Phase 1**: Critical System Failures (8-12 hours)
+**Goal**: Fix critical system failures requiring immediate attention
+**Approach**: Restore core functionality and integration points
+**Confidence**: 90-95% - These are integration issues, not complex rebuilds
+**Aligns with**: TECH_DEBT.md CRITICAL PRIORITY items
 
-### **Phase 2**: Medium-Confidence Performance Issues (14-22 hours)
-**Goal**: Fix performance bottlenecks and restore advanced features
-**Approach**: Debug and fix cache/island model systems
+### **Phase 2**: High Priority Core Functionality (14-22 hours)
+**Goal**: Fix high priority missing core functionality and performance issues
+**Approach**: Debug and fix cache/rendering/configuration systems
 **Confidence**: 70-80% - May require significant investigation
+**Aligns with**: TECH_DEBT.md HIGH PRIORITY items
 
-### **Phase 3**: Low-Confidence Complex Features (22-30 hours)
-**Goal**: Restore complex tracking systems that may need reimplementation
-**Approach**: Deep investigation and potential rebuilding
+### **Phase 3**: Medium Priority Technical Debt (22-30 hours)
+**Goal**: Address medium priority technical debt and configuration issues
+**Approach**: Deep investigation and potential rebuilding of advanced features
 **Confidence**: 50-60% - May require significant development
+**Aligns with**: TECH_DEBT.md MEDIUM PRIORITY items
 
 ### **Phase 4**: System Integration and Validation (6 hours)
 **Goal**: Comprehensive testing and validation of all fixes
 **Approach**: Full system tests and performance verification
 **Confidence**: 85% - Testing and validation
+
+---
+
+## 🧹 **CODE AUDIT FINDINGS (2025-09-22)**
+
+Based on comprehensive code audit following CODING_GUIDELINES.md, several performance optimizations and documentation updates were identified:
+
+**📋 Cross-Reference with TECH_DEBT.md**: This document provides implementation guidance for issues catalogued in TECH_DEBT.md. Phase priorities align with TECH_DEBT.md priority classifications:
+- **Phase 1** = CRITICAL PRIORITY (Lineage tracking, Island model, LRU cache)
+- **Phase 2** = HIGH PRIORITY (Rendering, Configuration, Component tracking)
+- **Phase 3** = MEDIUM PRIORITY (Alerts, Documentation, O(n²) optimization)
+
+### **Audit Summary: A- Grade (92/100)**
+- **✅ Excellent**: Utils-first architecture perfectly implemented
+- **✅ Excellent**: DRY principle adherence with centralized diversity calculations
+- **✅ Good**: No meaningful code duplication found
+- **⚠️ Minor**: 2 unsampled O(n²) loops need performance optimization
+- **⚠️ Minor**: Documentation patterns need updating
+
+### **Priority 1: Performance Optimization**
+**Files to update**:
+- `genetic/fitness_sharing.py:114-115` - Add sampling for pairwise distance calculation
+- `genetic/island_model.py:394-395` - Add sampling for population diversity calculation
+
+**See**: TECH_DEBT.md section 13 for detailed implementation guidance and code examples
+
+### **Priority 2: Documentation Updates**
+- Update `CODING_GUIDELINES.md` with genetic algorithm specific sampling patterns
+- Document acceptable O(n²) cases for algorithmic necessity
+- Consider moving `calculate_selection_pressure` from CLI to utils if reused
+
+**See**: TECH_DEBT.md MEDIUM PRIORITY section for tracking these items
+
+### **Validation Status**
+- **Architecture**: ✅ Utils-first pattern perfectly implemented
+- **Performance**: ✅ Most O(n²) algorithms properly optimized with sampling
+- **Code Quality**: ✅ No duplicate implementations found
+- **Remaining**: ⚠️ 2 minor performance optimizations needed
 
 ---
 
@@ -251,11 +292,14 @@ chmod +x compare_*.sh
 
 ---
 
-## 🚀 **PHASE 1: HIGH-CONFIDENCE FIXES** (8-12 hours)
+## 🚀 **PHASE 1: CRITICAL SYSTEM FAILURES** (8-12 hours)
+
+*Addresses TECH_DEBT.md CRITICAL PRIORITY items requiring immediate attention*
 
 ### **1.1 Fix Lineage Tracking Integration** (4-6 hours)
 **Confidence**: 95% - This is clearly a missing integration issue
 **Evidence**: GA shows genetic operations happening, but lineage shows none
+**Priority**: 🚨 CRITICAL - Core feature completely non-functional
 
 #### **Understanding the Problem** (30 minutes)
 The genetic algorithm is working perfectly:
@@ -806,10 +850,13 @@ echo "=== Expected: Final fitness should be similar to previous runs ==="
 
 ---
 
-## ⚙️ **PHASE 2: MEDIUM-CONFIDENCE PERFORMANCE ISSUES** (14-22 hours)
+## ⚙️ **PHASE 2: HIGH PRIORITY CORE FUNCTIONALITY** (14-22 hours)
 
-### **2.1 Fix LRU Cache Performance** (6-10 hours)
-**Confidence**: 70-80% - Multiple possible root causes, but cache concept is straightforward
+*Addresses TECH_DEBT.md HIGH PRIORITY items for missing core functionality*
+
+### **2.1 Fix Genetic Algorithm Representation vs. Rendering Coordinate System** (3-4 hours)
+**Confidence**: 85% - Clear visual evidence of systematic coordinate mismatch
+**Priority**: 🚨 HIGH - Core functionality accuracy failure
 
 #### **Understanding the Problem** (30 minutes)
 The cache should provide dramatic speedup:
@@ -923,6 +970,13 @@ print(f"Configured cache size: 16384MB")  # from config
 # Verify cache isn't being cleared unnecessarily
 ```
 
+**Problem 4: O(n²) Performance in Genetic Modules** (from 2025-09-22 code audit)
+```python
+# See TECH_DEBT.md section 13 for detailed analysis and solution
+# Files affected: genetic/fitness_sharing.py:114-115, genetic/island_model.py:394-395
+# Solution: Apply sampling pattern from utils/diversity_metrics.py for populations > 50
+```
+
 #### **Step 5: Validate Cache Fix** (30 minutes)
 ```bash
 # Test fixed cache performance
@@ -939,8 +993,10 @@ echo "=== Expected: Should see ~20-30s per generation after generation 3-5 ==="
 ./compare_performance.sh cache_test.log cache_fixed.log
 ```
 
-### **2.2 Fix Island Model Migration System** (8-12 hours)
-**Confidence**: 70-80% - Depends on whether island model is implemented or just configured
+### **1.2 Fix Island Model Migration System** (4-6 hours)
+**Confidence**: 75% - Integration issue similar to lineage tracking
+**Priority**: 🚨 CRITICAL - Advanced evolution feature non-functional
+**Moved from Phase 2**: Aligns with TECH_DEBT.md CRITICAL classification
 
 #### **Understanding the Problem** (30 minutes)
 Island model should manage multiple populations with migration:
