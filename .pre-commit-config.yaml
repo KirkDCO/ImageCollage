@@ -1,0 +1,29 @@
+# Pre-commit hooks for DRY compliance and code quality
+repos:
+  - repo: local
+    hooks:
+      - id: dry-audit
+        name: DRY Compliance Audit
+        entry: scripts/dry_audit.sh
+        language: script
+        pass_filenames: false
+        always_run: true
+
+      - id: coding-guidelines-check
+        name: Check CODING_GUIDELINES.md exists
+        entry: sh -c 'test -f CODING_GUIDELINES.md || (echo "❌ CODING_GUIDELINES.md missing!" && exit 1)'
+        language: system
+        pass_filenames: false
+        always_run: true
+
+  - repo: https://github.com/psf/black
+    rev: 23.3.0
+    hooks:
+      - id: black
+        language_version: python3
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+        args: [--max-line-length=100, --ignore=E203,W503]

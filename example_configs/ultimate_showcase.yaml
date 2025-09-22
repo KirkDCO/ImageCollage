@@ -1,0 +1,155 @@
+# Image Collage Generator Configuration
+# Ultimate Showcase Configuration - Demonstrates ALL Features
+# Optimized for comprehensive testing in 5-8 minutes with complete analysis
+# Generated: 2025-09-18 for final testing of all implemented capabilities
+# Documentation: https://docs.anthropic.com/claude-code
+
+# === BASIC SETTINGS ===
+basic_settings:
+  grid_size: [15, 20]              # 300 tiles - comprehensive but manageable
+  tile_size: [32, 32]              # Standard tile size for good detail
+  allow_duplicate_tiles: true      # Enable duplicates for flexibility
+  random_seed: 42                  # Reproducible results for comparison
+  enable_lineage_tracking: true    # ENABLE complete genealogical analysis
+  lineage_output_dir: "lineage_ultimate"  # Comprehensive lineage data
+  enable_diagnostics: true         # ENABLE comprehensive diagnostics analysis
+  diagnostics_output_dir: "diagnostics_ultimate"  # Complete diagnostic reports
+
+# === GENETIC ALGORITHM PARAMETERS ===
+genetic_algorithm:
+  # Core GA Parameters - optimized for comprehensive testing
+  population_size: 80              # Good population for all features
+  max_generations: 100             # Match basic settings
+  crossover_rate: 0.85             # High crossover rate for lineage analysis
+  mutation_rate: 0.1               # Balanced mutation for diversity
+  elitism_rate: 0.15               # Preserve elite for lineage tracking
+  tournament_size: 5               # Tournament selection
+  # Termination Criteria
+  convergence_threshold: 0.01      # Allow natural convergence
+  early_stopping_patience: 30      # Reasonable stopping point
+  target_fitness: 0.0              # Natural evolution target
+
+  # Advanced Evolution Features - ENABLE ALL
+  enable_adaptive_parameters: true  # Test adaptive evolution
+  enable_advanced_crossover: true   # Test advanced crossover methods
+  enable_advanced_mutation: true    # Test advanced mutation strategies
+  stagnation_threshold: 20          # Detect stagnation for restart testing
+  diversity_threshold: 0.4          # Maintain diversity
+  restart_threshold: 15             # Test restart mechanisms
+  restart_ratio: 0.3                # Conservative restart ratio
+
+  # Comprehensive Diversity Management - ENABLE ALL
+  enable_comprehensive_diversity: true   # Test comprehensive diversity
+  enable_spatial_diversity: true        # Test spatial diversity for images
+
+  # Multi-Population Island Model - ENABLE for migration analysis
+  enable_island_model: true             # Test island model evolution
+  island_model_num_islands: 3           # 3 islands for manageable complexity
+  island_model_migration_interval: 12   # Migrate every 12 generations
+  island_model_migration_rate: 0.25     # 25% migration rate
+
+# === FITNESS EVALUATION ===
+fitness_evaluation:
+  # Comprehensive fitness weights (sum = 1.0)
+  color_weight: 0.4                # Primary focus on color matching
+  luminance_weight: 0.25           # Good luminance matching
+  texture_weight: 0.2              # Texture analysis for detailed comparison
+  edges_weight: 0.15               # Edge preservation for structure
+  # Sum = 1.0
+
+# === GPU ACCELERATION ===
+gpu_acceleration:
+  # GPU settings that work with or without hardware
+  enable_gpu: true                 # Enable GPU if available
+  gpu_devices: [0, 1]              # Dual GPU support
+  gpu_batch_size: 2048             # Efficient batch size
+  gpu_memory_limit_gb: 16.0        # Conservative memory limit
+  auto_mixed_precision: true       # Enable mixed precision for speed
+
+# === PERFORMANCE SETTINGS ===
+performance:
+  # Performance settings optimized for comprehensive testing
+  enable_parallel_processing: true # Enable parallel processing
+  num_processes: 4                 # Reasonable process count
+  cache_size_mb: 1024              # Good cache size
+  max_source_images: 3000          # Sufficient source image limit
+  preview_frequency: 10            # Preview every 10 generations
+
+# === OUTPUT SETTINGS ===
+output:
+  # High quality output settings
+  output_quality: 95               # High quality output
+  enable_edge_blending: true       # Test edge blending feature
+
+# === CHECKPOINT SYSTEM ===
+checkpoint_system:
+  # Comprehensive crash recovery - demonstrate checkpoint functionality
+  enable_checkpoints: true         # ENABLE checkpoint saving
+  checkpoint_interval: 10          # Save every 10 generations for testing
+  max_checkpoints: 8               # Keep more checkpoints for analysis
+  checkpoint_dir: "checkpoints"    # Standard checkpoint subdirectory
+
+# === ADVANCED DIVERSITY MANAGEMENT ===
+diversity_management:
+  # Advanced diversity preservation techniques
+  enable_fitness_sharing: true     # ENABLE fitness sharing
+  fitness_sharing_radius: 5.0      # Standard sharing radius
+  fitness_sharing_alpha: 1.0       # Linear sharing function
+  enable_crowding_replacement: true # ENABLE crowding replacement
+  crowding_factor: 2.0             # Standard crowding factor
+
+# === INTELLIGENT RESTART SYSTEM ===
+intelligent_restart:
+  # Automatic population restart for stagnation prevention
+  enable_intelligent_restart: true # ENABLE intelligent restart
+  restart_diversity_threshold: 0.15 # Restart threshold for low diversity
+  restart_stagnation_threshold: 25  # Restart after 25 generations of stagnation
+  restart_elite_preservation: 0.15  # Preserve 15% of elite individuals
+
+# === DIVERSITY DASHBOARD ===
+diversity_dashboard:
+  # Real-time diversity monitoring and alerts
+  enable_diversity_dashboard: true # ENABLE real-time dashboard
+  dashboard_update_interval: 5     # Update every 5 generations for detailed monitoring
+  dashboard_alert_critical_diversity: 0.1  # Critical diversity alert threshold
+  dashboard_alert_low_diversity: 0.2       # Low diversity warning threshold
+
+# === COMPONENT TRACKING ===
+component_tracking:
+  # Fitness component evolution analysis
+  enable_component_tracking: true  # ENABLE component tracking
+  track_component_inheritance: true # ENABLE inheritance analysis
+
+# === FEATURE TESTING NOTES ===
+# This configuration is designed to:
+# 1. Test EVERY implemented feature in the system
+# 2. Complete in 5-8 minutes on most systems
+# 3. Generate comprehensive outputs for analysis
+# 4. Demonstrate crash recovery capabilities
+# 5. Show real-time monitoring and alerts
+# 6. Provide complete lineage and component analysis
+# 7. Test diversity preservation under various conditions
+# 8. Validate island model with migration
+# 9. Exercise checkpoint save/resume functionality
+# 10. Generate all possible visualizations and reports
+#
+# Expected outputs:
+# - Final collage with 750 tiles (30x25)
+# - Complete evolution animation
+# - 16 lineage analysis plots (genealogical visualization)
+# - 10 diagnostics visual reports + 3 data files
+# - Real-time diversity dashboard output
+# - Checkpoint files for crash recovery
+# - Component inheritance analysis
+# - Island model migration visualizations
+# - Fitness sharing and crowding analysis
+# - Intelligent restart demonstrations (if triggered)
+#
+# Usage examples:
+# Basic:  image-collage generate target.jpg sources/ ultimate.png --config ultimate_showcase.yaml
+# Full:   image-collage generate target.jpg sources/ ultimate.png --config ultimate_showcase.yaml \
+#           --save-animation evolution.gif --save-comparison comparison.jpg \
+#           --diagnostics diagnostics/ --track-lineage lineage/ --save-checkpoints \
+#           --enable-fitness-sharing --enable-restart --enable-dashboard --track-components --verbose
+#
+# Resume: image-collage resume target.jpg sources/ output_20231201_143022/ --verbose

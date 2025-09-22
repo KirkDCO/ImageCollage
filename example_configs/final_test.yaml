@@ -1,0 +1,115 @@
+# Image Collage Generator Configuration
+# Generated: 2025-09-18 16:36:20
+# Documentation: https://docs.anthropic.com/claude-code
+
+# === BASIC SETTINGS ===
+basic_settings:
+  grid_size: [15, 20]
+  tile_size: [32, 32]
+  allow_duplicate_tiles: True
+  random_seed: None
+  enable_lineage_tracking: False
+  lineage_output_dir: None
+
+# === GENETIC ALGORITHM PARAMETERS ===
+genetic_algorithm:
+  # Core GA Parameters
+  population_size: 30
+  max_generations: 30
+  crossover_rate: 0.8
+  mutation_rate: 0.1
+  elitism_rate: 0.1
+  tournament_size: 5
+  # Termination Criteria
+  convergence_threshold: 0.01
+  early_stopping_patience: 10
+  target_fitness: 0.0
+  # Advanced Evolution Features
+  enable_adaptive_parameters: True
+  enable_advanced_crossover: True
+  enable_advanced_mutation: True
+  stagnation_threshold: 15
+  diversity_threshold: 0.4
+  restart_threshold: 20
+  restart_ratio: 0.3
+  # Comprehensive Diversity Management
+  enable_comprehensive_diversity: True
+  enable_spatial_diversity: True
+  # Multi-Population Island Model
+  enable_island_model: False
+  island_model_num_islands: 4
+  island_model_migration_interval: 20
+  island_model_migration_rate: 0.1
+
+# === FITNESS EVALUATION ===
+fitness_evaluation:
+  # Fitness component weights (must sum to 1.0)
+  color_weight: 0.7
+  luminance_weight: 0.3
+  texture_weight: 0.0
+  edges_weight: 0.0
+  # Sum = 1.0
+
+# === GPU ACCELERATION ===
+gpu_acceleration:
+  # GPU settings for CUDA acceleration
+  enable_gpu: False
+  gpu_devices: [0]
+  gpu_batch_size: 256
+  gpu_memory_limit_gb: 20.0
+  auto_mixed_precision: True
+
+# === PERFORMANCE SETTINGS ===
+performance:
+  # Processing and optimization settings
+  enable_parallel_processing: True
+  num_processes: 4
+  cache_size_mb: 1024
+  max_source_images: 10000
+  preview_frequency: 10
+
+# === OUTPUT SETTINGS ===
+output:
+  # Image output and quality settings
+  output_quality: 95
+  enable_edge_blending: False
+
+# === CHECKPOINT SYSTEM ===
+checkpoint_system:
+  # Crash recovery and resuming settings
+  enable_checkpoints: False
+  checkpoint_interval: 25
+  max_checkpoints: 5
+  checkpoint_dir: None
+
+# === ADVANCED DIVERSITY MANAGEMENT ===
+diversity_management:
+  # Advanced diversity preservation techniques
+  enable_fitness_sharing: False
+  fitness_sharing_radius: 5.0
+  fitness_sharing_alpha: 1.0
+  enable_crowding_replacement: False
+  crowding_factor: 2.0
+
+# === INTELLIGENT RESTART SYSTEM ===
+intelligent_restart:
+  # Automatic population restart for stagnation prevention
+  enable_intelligent_restart: False
+  restart_diversity_threshold: 0.1
+  restart_stagnation_threshold: 50
+  restart_elite_preservation: 0.1
+
+# === DIVERSITY DASHBOARD ===
+diversity_dashboard:
+  # Real-time diversity monitoring and alerts
+  enable_diversity_dashboard: False
+  dashboard_update_interval: 10
+  dashboard_alert_critical_diversity: 0.1
+  dashboard_alert_low_diversity: 0.2
+
+# === COMPONENT TRACKING ===
+component_tracking:
+  # Fitness component evolution analysis
+  enable_component_tracking: False
+  track_component_inheritance: False
+

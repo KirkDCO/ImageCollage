@@ -1,0 +1,78 @@
+# Image Collage Generator Configuration
+# Generated: 2025-09-18 11:02:30
+# Documentation: https://docs.anthropic.com/claude-code
+
+# === BASIC SETTINGS ===
+basic_settings:
+  grid_size: [300, 300]
+  tile_size: [32, 32]
+  allow_duplicate_tiles: True
+  random_seed: None
+  enable_diagnostics: true
+  diagnostics_output_dir: "diagnostics_extreme"
+  enable_lineage_tracking: False
+  lineage_output_dir: None
+
+# === GENETIC ALGORITHM PARAMETERS ===
+genetic_algorithm:
+  # Core GA Parameters
+  population_size: 500
+  max_generations: 5000
+  crossover_rate: 0.8
+  mutation_rate: 0.05
+  elitism_rate: 0.1
+  tournament_size: 5
+  # Termination Criteria
+  convergence_threshold: 5e-05
+  early_stopping_patience: 250
+  target_fitness: 0.0
+  # Advanced Evolution Features
+  enable_adaptive_parameters: True
+  enable_advanced_crossover: True
+  enable_advanced_mutation: True
+  stagnation_threshold: 50
+  diversity_threshold: 0.4
+  restart_threshold: 50
+  restart_ratio: 0.3
+  # Comprehensive Diversity Management
+  enable_comprehensive_diversity: True
+  enable_spatial_diversity: True
+  # Multi-Population Island Model
+  enable_island_model: False
+  island_model_num_islands: 4
+  island_model_migration_interval: 20
+  island_model_migration_rate: 0.1
+
+# === FITNESS EVALUATION ===
+fitness_evaluation:
+  # Fitness component weights (must sum to 1.0)
+  color_weight: 0.4
+  luminance_weight: 0.25
+  texture_weight: 0.2
+  edges_weight: 0.15
+  # Sum = 1.0
+
+# === GPU ACCELERATION ===
+gpu_acceleration:
+  # GPU settings for CUDA acceleration
+  enable_gpu: True
+  gpu_devices: [0, 1]
+  gpu_batch_size: 1024
+  gpu_memory_limit_gb: 20.0
+  auto_mixed_precision: True
+
+# === PERFORMANCE SETTINGS ===
+performance:
+  # Processing and optimization settings
+  enable_parallel_processing: True
+  num_processes: 4
+  cache_size_mb: 1024
+  max_source_images: 10000
+  preview_frequency: 10
+
+# === OUTPUT SETTINGS ===
+output:
+  # Image output and quality settings
+  output_quality: 95
+  enable_edge_blending: False
+

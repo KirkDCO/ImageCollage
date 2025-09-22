@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "image-collage-generator"
+version = "0.1.0"
+description = "A genetic algorithm-based tool that creates photomosaic collages"
+readme = "README.md"
+authors = [
+    {name = "ImageCollage", email = "contact@imagecollage.dev"}
+]
+license = {text = "MIT"}
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "opencv-python>=4.5.0",
+    "numpy>=1.21.0",
+    "scikit-image>=0.18.0",
+    "Pillow>=8.0.0",
+    "click>=8.0.0",
+    "tqdm>=4.60.0",
+    "pydantic>=1.8.0",
+    "PyYAML>=6.0.0",
+]
+
+[project.optional-dependencies]
+gpu = [
+    "cupy>=10.0.0",
+    "numba>=0.56.0",
+]
+visualization = [
+    "matplotlib>=3.5.0",
+    "seaborn>=0.11.0",
+    "pandas>=1.3.0",
+]
+dev = [
+    "pytest>=6.0.0",
+    "pytest-cov>=2.12.0",
+    "black>=21.0.0",
+    "flake8>=3.9.0",
+    "mypy>=0.910",
+]
+
+[project.scripts]
+image-collage = "image_collage.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/image-collage-generator"
+Documentation = "https://image-collage-generator.readthedocs.io"
+Repository = "https://github.com/yourusername/image-collage-generator"
+
+[tool.setuptools.packages.find]
+include = ["image_collage*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["image_collage/tests"]
+python_files = ["test_*.py"]
+addopts = "--cov=image_collage --cov-report=term-missing"
