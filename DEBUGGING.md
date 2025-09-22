@@ -42,6 +42,7 @@ The system uses a **genetic algorithm** to evolve optimal arrangements of source
 #### **Configuration Systems** (These have bugs 🐛):
 - **Directory Naming**: Should use user-configured directory names
 - **Alert Thresholds**: Should provide meaningful warnings without excessive false positives
+- **Image Geometry**: Should preserve target aspect ratio and grid orientation
 
 ### **Expected vs. Actual Behavior Summary**
 
@@ -54,6 +55,7 @@ The system uses a **genetic algorithm** to evolve optimal arrangements of source
 | **Component Tracking** | 3 component visualizations | 0 component visualizations | ❌ **Broken** |
 | **Configuration** | Use "lineage_comprehensive" directory | Creates "lineage/" directory | 🐛 **Buggy** |
 | **Alerts** | Meaningful warnings | 98% false positive rate | 🐛 **Miscalibrated** |
+| **Image Geometry** | 30×40 grid → 960×1280 portrait output | 1280×960 landscape output | 🐛 **Wrong orientation** |
 
 ---
 
@@ -522,6 +524,285 @@ image-collage generate target.jpg sources/ alert_test.png \
 grep -i "warning\|alert" alert_test.log | wc -l
 echo "=== Expected: Should see 0-1 alerts instead of 9-10 ==="
 ```
+
+### **1.4 Fix Aspect Ratio and Grid Orientation** (2-3 hours)
+**Confidence**: 90% - Clear evidence of grid/image dimension mismatch
+
+#### **Understanding the Problem** (15 minutes)
+- Configuration specifies: 30×40 grid with 32×32 tiles
+- Expected output: 960×1280 pixels (portrait to match target)
+- Actual output: 1280×960 pixels (landscape - rotated/transposed)
+- Target image: 3072×4080 (3:4 portrait) → Output: 4:3 landscape
+
+#### **Step 1: Find Grid Dimension Processing Logic** (60 minutes)
+```bash
+# Find where grid dimensions are processed
+grep -r "grid_size\|grid.*dimension" image_collage/ --include="*.py" -n -A 5 -B 5
+
+# Look for image dimension calculation
+grep -r "output.*dimension\|dimension.*output" image_collage/ --include="*.py" -n
+grep -r "width.*height\|height.*width" image_collage/ --include="*.py" -n
+
+# Find tile size multiplication logic
+grep -r "tile_size.*grid\|grid.*tile_size" image_collage/ --include="*.py" -n -A 3
+```
+
+**What to find**:
+- Where `grid_size: [30, 40]` is interpreted as width×height vs. height×width
+- How output image dimensions are calculated from grid and tile size
+- If there's automatic rotation or aspect ratio adjustment
+
+#### **Step 2: Locate Image Creation and Rendering** (45 minutes)
+```bash
+# Find image rendering/creation code
+find image_collage/ -name "*render*" -o -name "*output*" | head -10
+grep -r "PIL\|Image\|create.*image" image_collage/ --include="*.py" -n -A 5
+
+# Look for dimension assignment
+grep -r "1280.*960\|960.*1280" image_collage/ --include="*.py" -n
+grep -r "width.*=\|height.*=" image_collage/ --include="*.py" -n
+```
+
+**Key questions**:
+- Is grid_size [30, 40] being interpreted as [width, height] or [height, width]?
+- Where are final image dimensions determined?
+- Is there automatic aspect ratio matching or rotation logic?
+
+#### **Step 3: Diagnose Grid Interpretation Issue** (60 minutes)
+
+**Typical grid interpretation problems**:
+
+**Problem 1: Grid size array interpretation**
+```python
+# WRONG: Inconsistent interpretation
+grid_size = [30, 40]  # Config says [width, height]
+width = grid_size[1] * tile_size[0]   # Uses index 1 for width
+height = grid_size[0] * tile_size[1]  # Uses index 0 for height
+# Results in: width=40*32=1280, height=30*32=960
+
+# RIGHT: Consistent interpretation
+grid_size = [30, 40]  # [width, height]
+width = grid_size[0] * tile_size[0]   # 30*32 = 960
+height = grid_size[1] * tile_size[1]  # 40*32 = 1280
+```
+
+**Problem 2: Automatic aspect ratio adjustment**
+```python
+# WRONG: System rotates to match some default orientation
+if target_aspect_ratio > 1.0:  # Portrait target
+    output_width, output_height = output_height, output_width  # Force landscape
+
+# RIGHT: Preserve configured grid orientation
+# Don't automatically rotate based on target aspect ratio
+```
+
+#### **Step 4: Fix Grid Dimension Logic** (30 minutes)
+
+**Fix approach depends on root cause**:
+
+**If grid interpretation is wrong**:
+```python
+# Ensure consistent [width, height] interpretation throughout
+def calculate_output_dimensions(grid_size, tile_size):
+    width = grid_size[0] * tile_size[0]   # grid_width * tile_width
+    height = grid_size[1] * tile_size[1]  # grid_height * tile_height
+    return width, height
+```
+
+**If automatic rotation is occurring**:
+```python
+# Remove automatic aspect ratio adjustment
+# Let user control orientation through grid configuration
+def create_output_image(grid_size, tile_size):
+    # Don't rotate based on target image aspect ratio
+    width, height = calculate_output_dimensions(grid_size, tile_size)
+    return Image.new('RGB', (width, height))
+```
+
+#### **Step 5: Test Aspect Ratio Fix** (15 minutes)
+```bash
+# Test with same configuration
+image-collage generate ../Galapagos_2025/SeaLion_Pose.jpg sources/ aspect_test.png \
+  --grid-size 30 40 \
+  --verbose
+
+# Verify output dimensions
+file aspect_test.png
+echo "=== Expected: 960x1280 pixels (portrait to match 30x40 grid) ==="
+
+# Check if target aspect ratio is preserved in interpretation
+echo "=== Target: 3:4 portrait, Grid: 30x40, Output should be portrait ==="
+```
+
+**Success Criteria**:
+- Output dimensions match expected: 960×1280 pixels
+- Grid orientation preserved: portrait grid → portrait output
+- No automatic rotation overriding user configuration
+
+### **1.5 Fix Genetic Algorithm Representation vs. Rendering Coordinate System** (3-4 hours)
+**Confidence**: 85% - Clear visual evidence of systematic coordinate mismatch
+
+#### **Understanding the Problem** (20 minutes)
+- **Visual Evidence**: Sea lion shifted right and up from original position
+- **Pattern**: Lower-left in original → Upper-center/right in collage
+- **Suspected Issue**: 180° rotation effect from coordinate system mismatch
+- **GA Fitness**: Good scores (0.293→0.178) suggest GA works correctly within its coordinate system
+- **Root Cause**: Bridge between GA representation and image rendering uses different conventions
+
+#### **Step 1: Trace Data Flow from GA to Image** (90 minutes)
+```bash
+# Find the critical bridge code between GA and rendering
+grep -r "individual.*render\|render.*individual" image_collage/ --include="*.py" -n -A 10 -B 5
+grep -r "grid.*image\|image.*grid" image_collage/ --include="*.py" -n -A 5
+
+# Look for genetic algorithm individual to grid conversion
+grep -r "individual.*grid\|genome.*grid" image_collage/ --include="*.py" -n -A 10
+grep -r "population.*grid\|grid.*population" image_collage/ --include="*.py" -n
+
+# Find image creation from grid/tiles
+find image_collage/ -name "*render*" -o -name "*output*" -o -name "*image*" | head -10
+grep -r "create.*image\|Image\.new" image_collage/ --include="*.py" -n -A 5
+```
+
+**What to find**:
+- Function that converts GA individual (1D array) to 2D grid
+- Function that converts 2D grid to final image
+- How array indices map to image coordinates
+
+#### **Step 2: Analyze Array Indexing Patterns** (60 minutes)
+```bash
+# Look for potential row/col vs x/y confusion
+grep -r "grid\[.*\]\[.*\]" image_collage/ --include="*.py" -n -A 3 -B 3
+grep -r "row.*col\|col.*row" image_collage/ --include="*.py" -n -A 5
+grep -r "width.*height\|height.*width" image_collage/ --include="*.py" -n
+
+# Check for coordinate transformation functions
+grep -r "position.*index\|index.*position" image_collage/ --include="*.py" -n -A 5
+grep -r "x.*y\|coordinate" image_collage/ --include="*.py" -n -A 3
+```
+
+**Key patterns to identify**:
+- `grid[row][col]` vs `grid[col][row]` usage
+- Array indexing: `array[y * width + x]` vs `array[x * height + y]`
+- Coordinate origin assumptions (top-left vs bottom-left)
+
+#### **Step 3: Identify the Specific Mismatch** (45 minutes)
+
+**Common coordinate system mismatches**:
+
+**Mismatch Type 1: Row-major vs Column-major**
+```python
+# GA REPRESENTATION: Row-major storage
+individual = [tile1, tile2, ..., tile1200]  # 30x40 = 1200 tiles
+# Stored as: row0[col0,col1,...,col29], row1[col0,col1,...], ...
+
+# RENDERER: Column-major interpretation
+for col in range(width):
+    for row in range(height):
+        tile = individual[col * height + row]  # WRONG: should be row * width + col
+        place_tile_at(row, col, tile)
+# RESULT: 90° rotation
+```
+
+**Mismatch Type 2: Grid origin confusion**
+```python
+# GA: Top-left origin (image convention)
+for row in range(height):
+    for col in range(width):
+        index = row * width + col
+
+# RENDERER: Bottom-left origin (math convention)
+for row in range(height):
+    for col in range(width):
+        image_row = height - 1 - row  # Flip vertically
+        place_tile_at(image_row, col, tiles[row][col])
+# RESULT: Vertical flip
+```
+
+**Mismatch Type 3: Dimension interpretation**
+```python
+# GA: grid_size = [30, 40] interpreted as [width=30, height=40]
+individual_length = 30 * 40  # Creates 1200-gene individual
+
+# RENDERER: grid_size = [30, 40] interpreted as [height=30, width=40]
+for row in range(30):  # height
+    for col in range(40):  # width
+        # Wrong dimensions cause coordinate scrambling
+# RESULT: Transpose + distortion
+```
+
+#### **Step 4: Implement Coordinate System Fix** (60 minutes)
+
+**Fix approach depends on identified mismatch**:
+
+**For row-major/column-major mismatch**:
+```python
+# UNIFIED APPROACH: Ensure consistent interpretation
+def individual_to_grid(individual, grid_width, grid_height):
+    """Convert 1D individual to 2D grid with consistent row-major ordering"""
+    grid = []
+    for row in range(grid_height):
+        row_tiles = []
+        for col in range(grid_width):
+            index = row * grid_width + col  # Consistent row-major
+            row_tiles.append(individual[index])
+        grid.append(row_tiles)
+    return grid
+
+def grid_to_image(grid, tile_size):
+    """Convert 2D grid to image with same coordinate convention"""
+    height, width = len(grid), len(grid[0])
+    image = Image.new('RGB', (width * tile_size[0], height * tile_size[1]))
+
+    for row in range(height):
+        for col in range(width):
+            tile = grid[row][col]
+            # Place tile at consistent position
+            x = col * tile_size[0]
+            y = row * tile_size[1]  # Same row interpretation
+            image.paste(tile, (x, y))
+    return image
+```
+
+**For origin mismatch**:
+```python
+# CONSISTENT ORIGIN: Use top-left throughout
+# Remove any bottom-left origin conversions in renderer
+# Ensure GA and renderer use same coordinate system
+```
+
+#### **Step 5: Test Coordinate System Fix** (30 minutes)
+```bash
+# Test with same target image
+image-collage generate ../Galapagos_2025/SeaLion_Pose.jpg sources/ coordinate_fix_test.png \
+  --preset demo --generations 10 \
+  --verbose
+
+# Visual comparison test
+echo "=== Position Accuracy Test ==="
+echo "Original: Sea lion in lower-left quadrant"
+echo "Fixed collage: Sea lion should be in lower-left quadrant"
+
+# Create side-by-side comparison
+convert ../Galapagos_2025/SeaLion_Pose.jpg coordinate_fix_test.png +append position_comparison.jpg
+echo "Check position_comparison.jpg for sea lion position accuracy"
+```
+
+**Success Criteria**:
+- Sea lion positioned in same relative location as original
+- No systematic horizontal or vertical shifts
+- Subject features align spatially with target image
+- Visual comparison shows accurate positional mapping
+
+#### **Step 6: Verify Fix Doesn't Break Fitness Evaluation** (15 minutes)
+```bash
+# Ensure fitness scores remain good after coordinate fix
+grep "Fitness" coordinate_fix_test.log | tail -5
+echo "=== Expected: Fitness should still improve during evolution ==="
+echo "=== Expected: Final fitness should be similar to previous runs ==="
+```
+
+**Critical validation**: Fix must preserve GA optimization capability while correcting spatial accuracy.
 
 ---
 

@@ -263,7 +263,57 @@ lineage/
 
 **Debugging Priority**: 🚨 **MEDIUM** - Configuration reliability issues
 
-### 6. Missing Advanced Lineage Visualizations
+### 6. Aspect Ratio and Grid Orientation Discrepancy
+**Location**: Image processing and grid configuration system
+**Discovered**: Image dimension analysis (2025-09-22)
+
+**Critical Issues**:
+- **Expected Output**: 30×40 grid with 32×32 tiles should produce 960×1280 (portrait)
+- **Actual Output**: 1280×960 pixels (landscape) - rotated/transposed orientation
+- **Aspect Ratio Change**: Portrait target (3:4) becomes landscape output (4:3)
+- **Grid Calculation**: Mismatch between configured grid and actual pixel dimensions
+
+**Evidence**:
+```
+Target: 3072×4080 pixels (3:4 portrait)
+Config: 30×40 grid, 32×32 tiles
+Expected: 960×1280 pixels (portrait)
+Actual: 1280×960 pixels (landscape)
+```
+
+**Impact**: Unexpected image orientation, potential distortion of target proportions
+
+**Debugging Priority**: 🚨 **MEDIUM** - Image geometry and user expectations
+
+### 7. Genetic Algorithm Representation vs. Rendering Interpretation Mismatch
+**Location**: Bridge between genetic algorithm and image rendering systems
+**Discovered**: Visual comparison analysis (2025-09-22)
+
+**Critical Issues**:
+- **Positional Accuracy**: Sea lion shifted right and up from original position
+- **Coordinate System Mismatch**: GA representation vs. renderer interpretation using different conventions
+- **Suspected 180° Effect**: Combined horizontal and vertical displacement suggests systematic rotation
+- **Root Cause**: Different array indexing, grid origin, or dimension order conventions
+
+**Evidence**:
+```
+Original: Sea lion in lower-left quadrant
+Collage: Sea lion in upper-center/center-right area
+Pattern: Consistent with 180° rotation or coordinate system flip
+Fitness: GA achieves good scores (0.293→0.178) despite wrong positioning
+```
+
+**Possible Root Causes**:
+1. **Row-major vs. column-major**: GA stores row-by-row, renderer reads column-by-column
+2. **Array indexing**: grid[row][col] vs. grid[col][row] interpretation confusion
+3. **Grid origin**: Top-left vs. bottom-left coordinate system origins
+4. **Dimension order**: [width, height] vs. [height, width] interpretation mismatch
+
+**Impact**: Systematic spatial inaccuracy in all generated mosaics, subjects appear in wrong positions
+
+**Debugging Priority**: 🚨 **HIGH** - Core functionality accuracy failure
+
+### 8. Missing Advanced Lineage Visualizations
 **Location**: Lineage visualization system
 **Discovered**: Output file analysis
 
@@ -279,7 +329,7 @@ lineage/
 
 **Debugging Priority**: 🚨 **MEDIUM** - Depends on fixing underlying systems
 
-### 7. Genetic Operations Data Inconsistency
+### 9. Genetic Operations Data Inconsistency
 **Location**: Genetic algorithm metrics vs. lineage tracking
 **Discovered**: Cross-reference analysis of diagnostics and lineage data
 
@@ -301,7 +351,7 @@ Generation,Beneficial_Mutations,Beneficial_Crossovers
 
 **Debugging Priority**: 🚨 **CRITICAL** - Confirms lineage system is not connected to GA
 
-### 8. Adaptive Parameter System Functioning
+### 10. Adaptive Parameter System Functioning
 **Location**: Genetic algorithm parameter adaptation
 **Discovered**: CSV analysis of mutation/crossover rates
 
@@ -320,7 +370,7 @@ Generation,Current_Mutation_Rate,Current_Crossover_Rate
 
 **Status**: ✅ **WORKING CORRECTLY** - Adaptive parameters functioning as designed
 
-### 9. Dashboard Alert System Malfunction
+### 11. Dashboard Alert System Malfunction
 **Location**: Diversity dashboard alert system
 **Discovered**: Dashboard data analysis
 
@@ -345,7 +395,7 @@ Generation,Current_Mutation_Rate,Current_Crossover_Rate
 
 **Debugging Priority**: 🚨 **MEDIUM** - Alert threshold calibration needed
 
-### 10. Diagnostics Data Completeness Success
+### 12. Diagnostics Data Completeness Success
 **Location**: Diagnostics data collection and CSV export
 **Discovered**: File analysis validation
 
@@ -362,7 +412,7 @@ Generation,Current_Mutation_Rate,Current_Crossover_Rate
 
 **Status**: ✅ **WORKING PERFECTLY** - Diagnostics system highly reliable
 
-### 11. Stagnation and Restart System Analysis
+### 13. Stagnation and Restart System Analysis
 **Location**: Intelligent restart and stagnation detection
 **Discovered**: Fitness progression analysis
 
@@ -384,9 +434,11 @@ Generation,Current_Mutation_Rate,Current_Crossover_Rate
 - LRU cache performance system failure
 
 **🚨 HIGH PRIORITY** (Missing core functionality):
+- Genetic algorithm representation vs. rendering interpretation mismatch
 - Component tracking system failure
 - Configuration management bugs
 - Intelligent restart system non-functional
+- Aspect ratio and grid orientation discrepancy
 
 **⚠️ MEDIUM PRIORITY** (Technical debt and configuration issues):
 - Dashboard alert system threshold calibration (98% false positive rate)
