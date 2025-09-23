@@ -7,7 +7,7 @@
 
 # === BASIC SETTINGS ===
 basic_settings:
-  grid_size: [30, 40] #[60, 80]               # 4800 tiles - substantial complexity, preserves 4:3 aspect ratio
+  grid_size: [15, 20] #[60, 80]               # 4800 tiles - substantial complexity, preserves 4:3 aspect ratio
   tile_size: [32, 32]               # Standard tile size for good detail
   allow_duplicate_tiles: false      # NO duplicates - forces diverse solutions and lineage complexity
   random_seed: 12345                # Different seed from showcase for independent validation
@@ -20,7 +20,7 @@ basic_settings:
 genetic_algorithm:
   # Core GA Parameters - optimized for comprehensive overnight testing
   population_size: 150              # Larger population for richer lineage trees
-  max_generations: 1000              # Overnight run - plenty of generations for thorough testing
+  max_generations: 500              # Overnight run - plenty of generations for thorough testing
   crossover_rate: 0.75               # Moderate crossover for balanced birth method distribution
   mutation_rate: 0.15                # Higher mutation for diversity and lineage complexity
   elitism_rate: 0.10                 # Moderate elitism for survival analysis
