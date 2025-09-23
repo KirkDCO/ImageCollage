@@ -240,12 +240,13 @@ class GeneticAlgorithmEngine:
                 if self.lineage_tracker and migration_stats and 'migrations' in migration_stats:
                     for migration in migration_stats['migrations']:
                         try:
-                            # Track immigration birth method for migrants
-                            immigrant_id = self.lineage_tracker.track_immigration(
-                                migration['individual'],
-                                0.0,  # Fitness will be updated later
-                                source_island=migration.get('source_island', -1)
-                            )
+                            # Record migration event in lineage tracker for later analysis
+                            self.lineage_tracker.migration_events.append({
+                                'generation': self.generation,
+                                'source_island': migration.get('source', -1),
+                                'target_island': migration.get('target', -1),
+                                'migrants_count': migration.get('migrants', 0)
+                            })
                         except Exception as e:
                             logging.warning(f"Lineage tracking failed for migration: {e}")
 
