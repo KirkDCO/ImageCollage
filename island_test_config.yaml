@@ -1,0 +1,48 @@
+# Island Model Test Configuration
+
+# === BASIC SETTINGS ===
+basic_settings:
+  allow_duplicate_tiles: False
+  output_quality: 85
+  enable_checkpoints: True
+  checkpoint_interval: 10
+  max_checkpoints: 3
+
+# === GENETIC ALGORITHM ===
+genetic_algorithm:
+  population_size: 50
+  max_generations: 30
+  crossover_rate: 0.7
+  mutation_rate: 0.15
+  elitism_rate: 0.1
+  tournament_size: 5
+  
+  # Advanced Evolution Features
+  enable_adaptive_parameters: True
+  enable_advanced_crossover: True
+  enable_advanced_mutation: True
+  enable_comprehensive_diversity: True
+  enable_spatial_diversity: True
+  
+  # Multi-Population Island Model - ENABLED
+  enable_island_model: True
+  island_model_num_islands: 3
+  island_model_migration_interval: 10
+  island_model_migration_rate: 0.2
+
+# === LINEAGE TRACKING ===
+lineage_tracking:
+  enable_lineage_tracking: True
+  lineage_output_dir: "test_lineage_with_migration"
+  
+# === COMPONENT TRACKING ===
+component_tracking:
+  enable_component_tracking: True
+  track_component_inheritance: True
+
+# === FITNESS EVALUATION ===
+fitness_evaluation:
+  color_weight: 0.4
+  luminance_weight: 0.3
+  texture_weight: 0.2
+  edges_weight: 0.1
