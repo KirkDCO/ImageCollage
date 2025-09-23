@@ -239,11 +239,17 @@ class CollageGenerator:
             try:
                 from ..lineage import LineageTracker, LineageVisualizer
 
-                # Create lineage output directory within the main output folder
-                if output_folder:
+                # Create lineage output directory - prioritize config setting
+                if self.config.lineage_output_dir:
+                    if output_folder:
+                        # Use configured name within output folder
+                        lineage_dir = Path(output_folder) / self.config.lineage_output_dir
+                    else:
+                        # Use configured path as-is
+                        lineage_dir = Path(self.config.lineage_output_dir)
+                elif output_folder:
+                    # Default to "lineage" within output folder
                     lineage_dir = Path(output_folder) / "lineage"
-                elif self.config.lineage_output_dir:
-                    lineage_dir = Path(self.config.lineage_output_dir)
                 else:
                     lineage_dir = Path("lineage_output")
 
@@ -934,11 +940,17 @@ class CollageGenerator:
             try:
                 from ..lineage import LineageTracker, LineageVisualizer
 
-                # Create lineage output directory within the main output folder
-                if output_folder:
+                # Create lineage output directory - prioritize config setting
+                if self.config.lineage_output_dir:
+                    if output_folder:
+                        # Use configured name within output folder
+                        lineage_dir = Path(output_folder) / self.config.lineage_output_dir
+                    else:
+                        # Use configured path as-is
+                        lineage_dir = Path(self.config.lineage_output_dir)
+                elif output_folder:
+                    # Default to "lineage" within output folder
                     lineage_dir = Path(output_folder) / "lineage"
-                elif self.config.lineage_output_dir:
-                    lineage_dir = Path(self.config.lineage_output_dir)
                 else:
                     lineage_dir = Path("lineage_output")
 

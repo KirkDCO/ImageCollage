@@ -486,7 +486,21 @@ class GeneticAlgorithmEngine:
         else:
             mutation_rate = base_rate
 
-        return self._enhanced_mutate(individual, mutation_rate)
+        mutated = self._enhanced_mutate(individual, mutation_rate)
+
+        # Track lineage if tracker is available
+        if self.lineage_tracker:
+            try:
+                parent_id = self._ensure_individual_id(individual)
+
+                # Only track if parent is found in lineage tracker
+                if parent_id:
+                    # Track mutation - fitness will be updated later
+                    mutated_id = self.lineage_tracker.track_mutation(parent_id, mutated, 0.0)
+            except Exception as e:
+                logging.warning(f"Lineage tracking failed in adaptive_mutate: {e}")
+
+        return mutated
 
     def _enhanced_mutate(self, individual: np.ndarray, mutation_rate: float) -> np.ndarray:
         """Enhanced mutation with multiple strategies."""
@@ -549,6 +563,18 @@ class GeneticAlgorithmEngine:
         for pos in positions[:mutation_count]:
             i, j = pos
             mutated[i, j] = random.randint(0, self.num_source_images - 1)
+
+        # Track lineage if tracker is available
+        if self.lineage_tracker:
+            try:
+                parent_id = self._ensure_individual_id(individual)
+
+                # Only track if parent is found in lineage tracker
+                if parent_id:
+                    # Track mutation - fitness will be updated later
+                    mutated_id = self.lineage_tracker.track_mutation(parent_id, mutated, 0.0)
+            except Exception as e:
+                logging.warning(f"Lineage tracking failed in diversify_mutate: {e}")
 
         return mutated
 
