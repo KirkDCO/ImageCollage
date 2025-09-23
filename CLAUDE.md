@@ -3,38 +3,18 @@
 ## 🚨 MANDATORY: Development Guidelines
 **CRITICAL**: Before making ANY code changes, read and follow `CODING_GUIDELINES.md`
 
-### 🤖 AI Assistant Session Startup (REQUIRED EVERY SESSION):
+### 🤖 AI Assistant Session Startup:
+**Use `cstart` alias to automatically enforce guidelines** - See `SESSION_STARTUP.md` for details
 
-#### 📋 MANDATORY VERIFICATION CHECKLIST
-**Before proceeding with ANY development tasks, I must explicitly confirm:**
-
-✅ **I have read and acknowledge CODING_GUIDELINES.md**
-   - Universal architecture principles and DRY compliance requirements
-   - Interface validation protocols and defensive programming patterns
-   - Performance optimization guidelines and sampling requirements
-
-✅ **I have read and acknowledge DEVELOPER_GUIDELINES.md**
-   - Project-specific workflow patterns and collaboration standards
-   - Quality control habits and debugging methodologies
-   - Session startup rituals and development best practices
-
-✅ **I commit to following these guidelines throughout this session**
-   - Utils-first development pattern with centralized utilities
-   - Search-before-create methodology to prevent duplication
-   - Interface validation before any system integration
-   - Performance-aware algorithms with proper sampling for large datasets
-
-#### 🛠️ SESSION STARTUP ACTIONS
-1. ✅ **Architectural review**: Confirm understanding of utils-first pattern
-2. ✅ **Audit current state**: Run `./scripts/dry_audit.sh` if available
-3. ✅ **Search before create**: Always grep for existing implementations
-4. ✅ **DRY compliance**: No duplicate function implementations
-5. ✅ **Performance awareness**: Sample large datasets, no unoptimized O(n²)
-6. ✅ **Interface validation**: Validate all interfaces before integration
+**Recommended alias for ~/.bashrc or ~/.zshrc:**
+```bash
+alias cstart='cd /opt/Projects/ImageCollage && claude "Review SESSION_STARTUP.md and follow the instructions."'
+```
 
 ### 👤 Human Developer Resources:
 - **`DEVELOPER_GUIDELINES.md`** - Personal workflow and collaboration patterns
 - **`CODING_GUIDELINES.md`** - Universal architecture principles
+- **`SESSION_STARTUP.md`** - Session startup protocol template
 - **`./scripts/dry_audit.sh`** - Automated compliance checking
 
 ### 🔍 Helpful Reminders:
