@@ -250,6 +250,10 @@ class CollageGenerator:
                 lineage_tracker = LineageTracker(str(lineage_dir))
                 lineage_visualizer = LineageVisualizer(lineage_tracker, str(lineage_dir))
 
+                # Connect lineage tracker to GA engine
+                self.ga_engine.set_lineage_tracker(lineage_tracker)
+                print(f"Lineage tracking enabled - output: {lineage_dir}")
+
             except ImportError as e:
                 print(f"Warning: Lineage tracking not available: {e}")
                 self.config.enable_lineage_tracking = False
@@ -940,6 +944,10 @@ class CollageGenerator:
 
                 lineage_tracker = LineageTracker(str(lineage_dir))
                 lineage_visualizer = LineageVisualizer(lineage_tracker, str(lineage_dir))
+
+                # Connect lineage tracker to GA engine
+                self.ga_engine.set_lineage_tracker(lineage_tracker)
+                print(f"Lineage tracking enabled for resume - output: {lineage_dir}")
 
                 # Initialize lineage tracking with current population
                 if evolution_state:

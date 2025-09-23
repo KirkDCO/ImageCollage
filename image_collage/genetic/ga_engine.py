@@ -19,6 +19,11 @@ class GeneticAlgorithmEngine:
         self.grid_size = config.grid_size
         self.generation = 0
 
+        # Lineage tracking
+        self.lineage_tracker = None
+        self.individual_id_map: Dict[str, str] = {}  # genome_hash -> individual_id
+        self.next_individual_id = 0
+
         # Advanced evolution tracking
         self.fitness_history = []
         self.diversity_history = []
@@ -235,22 +240,36 @@ class GeneticAlgorithmEngine:
     def _crossover(self, parent1: np.ndarray, parent2: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         child1 = parent1.copy()
         child2 = parent2.copy()
-        
+
         grid_width, grid_height = self.grid_size  # grid_size is (width, height)
-        
+
         if random.random() < 0.5:
             crossover_point1 = random.randint(0, grid_height - 1)
             crossover_point2 = random.randint(crossover_point1, grid_height - 1)
-            
+
             child1[crossover_point1:crossover_point2] = parent2[crossover_point1:crossover_point2]
             child2[crossover_point1:crossover_point2] = parent1[crossover_point1:crossover_point2]
         else:
             crossover_point1 = random.randint(0, grid_width - 1)
             crossover_point2 = random.randint(crossover_point1, grid_width - 1)
-            
+
             child1[:, crossover_point1:crossover_point2] = parent2[:, crossover_point1:crossover_point2]
             child2[:, crossover_point1:crossover_point2] = parent1[:, crossover_point1:crossover_point2]
-        
+
+        # Track lineage if tracker is available
+        if self.lineage_tracker:
+            try:
+                parent1_id = self._ensure_individual_id(parent1)
+                parent2_id = self._ensure_individual_id(parent2)
+
+                # Only track if both parents are found in lineage tracker
+                if parent1_id and parent2_id:
+                    # Track both children - fitness will be updated later
+                    child1_id = self.lineage_tracker.track_crossover(parent1_id, parent2_id, child1, 0.0)
+                    child2_id = self.lineage_tracker.track_crossover(parent1_id, parent2_id, child2, 0.0)
+            except Exception as e:
+                logging.warning(f"Lineage tracking failed in crossover: {e}")
+
         return child1, child2
     
     def _mutate(self, individual: np.ndarray) -> np.ndarray:
@@ -267,7 +286,19 @@ class GeneticAlgorithmEngine:
                             mutated[i, j], mutated[i, j-1] = mutated[i, j-1], mutated[i, j]
                         elif i > 0:
                             mutated[i, j], mutated[i-1, j] = mutated[i-1, j], mutated[i, j]
-        
+
+        # Track lineage if tracker is available
+        if self.lineage_tracker:
+            try:
+                parent_id = self._ensure_individual_id(individual)
+
+                # Only track if parent is found in lineage tracker
+                if parent_id:
+                    # Track mutation - fitness will be updated later
+                    mutated_id = self.lineage_tracker.track_mutation(parent_id, mutated, 0.0)
+            except Exception as e:
+                logging.warning(f"Lineage tracking failed in mutation: {e}")
+
         return mutated
     
     def get_generation(self) -> int:
@@ -389,6 +420,20 @@ class GeneticAlgorithmEngine:
         child1[mask] = parent2[mask]
         child2[mask] = parent1[mask]
 
+        # Track lineage if tracker is available
+        if self.lineage_tracker:
+            try:
+                parent1_id = self._ensure_individual_id(parent1)
+                parent2_id = self._ensure_individual_id(parent2)
+
+                # Only track if both parents are found in lineage tracker
+                if parent1_id and parent2_id:
+                    # Track both children - fitness will be updated later
+                    child1_id = self.lineage_tracker.track_crossover(parent1_id, parent2_id, child1, 0.0)
+                    child2_id = self.lineage_tracker.track_crossover(parent1_id, parent2_id, child2, 0.0)
+            except Exception as e:
+                logging.warning(f"Lineage tracking failed in uniform_crossover: {e}")
+
         return child1, child2
 
     def _block_crossover(self, parent1: np.ndarray, parent2: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -412,6 +457,20 @@ class GeneticAlgorithmEngine:
         # Swap blocks
         child1[start_row:end_row, start_col:end_col] = parent2[start_row:end_row, start_col:end_col]
         child2[start_row:end_row, start_col:end_col] = parent1[start_row:end_row, start_col:end_col]
+
+        # Track lineage if tracker is available
+        if self.lineage_tracker:
+            try:
+                parent1_id = self._ensure_individual_id(parent1)
+                parent2_id = self._ensure_individual_id(parent2)
+
+                # Only track if both parents are found in lineage tracker
+                if parent1_id and parent2_id:
+                    # Track both children - fitness will be updated later
+                    child1_id = self.lineage_tracker.track_crossover(parent1_id, parent2_id, child1, 0.0)
+                    child2_id = self.lineage_tracker.track_crossover(parent1_id, parent2_id, child2, 0.0)
+            except Exception as e:
+                logging.warning(f"Lineage tracking failed in block_crossover: {e}")
 
         return child1, child2
 
@@ -553,6 +612,41 @@ class GeneticAlgorithmEngine:
             List of current population individuals
         """
         return self.population.copy()
+
+    def set_lineage_tracker(self, lineage_tracker) -> None:
+        """Set the lineage tracker for recording genealogy."""
+        self.lineage_tracker = lineage_tracker
+        logging.info("Lineage tracker connected to GA engine")
+
+    def _generate_individual_id(self) -> str:
+        """Generate unique ID for a new individual."""
+        id_str = f"gen_{self.generation}_ind_{self.next_individual_id:06d}"
+        self.next_individual_id += 1
+        return id_str
+
+    def _get_individual_id(self, individual: np.ndarray) -> str:
+        """Get ID for existing individual (use genome hash as key)."""
+        genome_hash = str(hash(str(individual)))
+        if genome_hash in self.individual_id_map:
+            return self.individual_id_map[genome_hash]
+        else:
+            # Create new ID if not found
+            new_id = self._generate_individual_id()
+            self.individual_id_map[genome_hash] = new_id
+            return new_id
+
+    def _ensure_individual_id(self, individual: np.ndarray) -> str:
+        """Ensure individual has an ID, finding the correct LineageTracker ID."""
+        if not self.lineage_tracker:
+            return None
+
+        # Find the individual in the lineage tracker by genome matching
+        for ind_id, individual_record in self.lineage_tracker.individuals.items():
+            if np.array_equal(individual_record.genome, individual):
+                return ind_id
+
+        # Individual not found in lineage tracker
+        return None
 
     def set_state(self, state: Dict[str, Any]) -> None:
         """Restore GA engine internal state from checkpoint.
