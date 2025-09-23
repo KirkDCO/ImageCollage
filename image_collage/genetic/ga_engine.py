@@ -67,8 +67,11 @@ class GeneticAlgorithmEngine:
 
         # Initialize island model if enabled
         if self.use_island_model:
+            num_islands = getattr(self.config.genetic_params, 'island_model_num_islands', 4)
+            migration_interval = getattr(self.config.genetic_params, 'island_model_migration_interval', 20)
+            migration_rate = getattr(self.config.genetic_params, 'island_model_migration_rate', 0.1)
             self.island_model_manager = IslandModelManager(
-                self.config, num_islands=4, migration_interval=20, migration_rate=0.1
+                self.config, num_islands=num_islands, migration_interval=migration_interval, migration_rate=migration_rate
             )
             self.island_model_manager.initialize_islands(self.grid_size, num_source_images, self.config.allow_duplicate_tiles)
             # Get initial population from island model
@@ -140,8 +143,9 @@ class GeneticAlgorithmEngine:
 
             # Re-initialize island model if it was used
             if self.use_island_model:
+                num_islands = getattr(self.config.genetic_params, 'island_model_num_islands', 4)
                 self.island_model_manager = IslandModelManager(
-                    self.config, num_islands=4, migration_interval=self.migration_interval,
+                    self.config, num_islands=num_islands, migration_interval=self.migration_interval,
                     migration_rate=self.migration_rate
                 )
     

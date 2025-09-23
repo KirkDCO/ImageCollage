@@ -10,6 +10,8 @@ import random
 from typing import List, Dict, Tuple, Any, Optional
 from dataclasses import dataclass, field
 import logging
+import time
+from collections import defaultdict
 
 
 @dataclass
@@ -22,12 +24,19 @@ class Island:
     generation: int = 0
     diversity_score: float = 0.0
 
+    # Performance optimization caches
+    _fitness_cache: Dict[str, float] = field(default_factory=dict)
+    _diversity_cache: float = -1.0
+    _diversity_cache_generation: int = -1
+    _sorted_fitness_indices: Optional[np.ndarray] = None
+    _sorted_fitness_valid: bool = False
+
 
 class IslandModelManager:
     """Manages multiple populations (islands) with migration between them."""
 
     def __init__(self, config, num_islands: int = 4, migration_interval: int = 10,
-                 migration_rate: float = 0.1, migration_policy: str = "best_to_worst"):
+                 migration_rate: float = 0.1, migration_policy: str = "ring"):
         self.config = config
         self.num_islands = num_islands
         self.migration_interval = migration_interval
@@ -46,12 +55,17 @@ class IslandModelManager:
         self.global_best_fitness = float('inf')
         self.migration_history = []
 
-        # Migration policies
+        # Performance optimization settings
+        self.diversity_sample_size = min(20, self.island_size // 2)
+        self.enable_fitness_cache = True
+        self.lazy_diversity_calculation = True
+
+        # Migration policies - optimized versions
         self.migration_policies = {
-            "best_to_worst": self._migrate_best_to_worst,
-            "random": self._migrate_random,
-            "ring": self._migrate_ring,
-            "diversity_based": self._migrate_diversity_based
+            "best_to_worst": self._migrate_best_to_worst_optimized,
+            "random": self._migrate_random_optimized,
+            "ring": self._migrate_ring_optimized,
+            "diversity_based": self._migrate_diversity_based_optimized
         }
 
         logging.info(f"Initialized Island Model with {num_islands} islands of size {self.island_size}")
@@ -59,7 +73,7 @@ class IslandModelManager:
     def initialize_islands(self, grid_size: Tuple[int, int], num_source_images: int,
                           allow_duplicates: bool = True) -> None:
         """Initialize all islands with random populations."""
-        grid_height, grid_width = grid_size
+        grid_width, grid_height = grid_size
 
         for island_idx, island in enumerate(self.islands):
             island.population = []
@@ -84,25 +98,32 @@ class IslandModelManager:
             logging.info(f"Initialized island {island_idx} with {len(island.population)} individuals")
 
     def evolve_generation(self, fitness_evaluator, ga_engine) -> Dict[str, Any]:
-        """Evolve all islands for one generation, then handle migration."""
+        """Evolve all islands for one generation with optimized performance."""
+        start_time = time.time()
         generation_stats = {
             'island_stats': [],
             'migration_occurred': False,
-            'global_improvement': False
+            'global_improvement': False,
+            'timing': {}
         }
 
-        # Evolve each island independently
+        is_migration_generation = (self.islands[0].generation % self.migration_interval == 0 and self.islands[0].generation > 0)
+
+        # Evolve each island independently with optimizations
         for island_idx, island in enumerate(self.islands):
+            island_start = time.time()
+
             # Set GA engine population to current island
             ga_engine.population = island.population
             ga_engine.generation = island.generation
 
-            # Evaluate fitness if needed
+            # Evaluate fitness if needed (initial generation)
             if any(f == float('inf') for f in island.fitness_scores):
-                island.fitness_scores = []
-                for individual in island.population:
-                    fitness = fitness_evaluator.evaluate(individual)
-                    island.fitness_scores.append(fitness)
+                island.fitness_scores = self._evaluate_population_fitness(island.population, fitness_evaluator)
+
+            # Store pre-evolution population for incremental fitness evaluation
+            pre_evolution_population = [ind.copy() for ind in island.population]
+            pre_evolution_fitness = island.fitness_scores.copy()
 
             # Evolve the island
             ga_engine.evolve_population(island.fitness_scores)
@@ -111,22 +132,18 @@ class IslandModelManager:
             island.population = ga_engine.population
             island.generation += 1
 
-            # Re-evaluate fitness for new individuals
-            island.fitness_scores = []
-            for individual in island.population:
-                fitness = fitness_evaluator.evaluate(individual)
-                island.fitness_scores.append(fitness)
+            # Incremental fitness evaluation - only evaluate new/changed individuals
+            island.fitness_scores = self._incremental_fitness_evaluation(
+                island, pre_evolution_population, pre_evolution_fitness, fitness_evaluator
+            )
 
-            # Update island best
-            best_idx = np.argmin(island.fitness_scores)
-            current_best_fitness = island.fitness_scores[best_idx]
+            # Update island best with fast min finding
+            self._update_island_best(island)
 
-            if current_best_fitness < island.best_fitness:
-                island.best_fitness = current_best_fitness
-                island.best_individual = island.population[best_idx].copy()
-
-            # Calculate island diversity (simplified)
-            island.diversity_score = self._calculate_island_diversity(island.population)
+            # Calculate diversity only when needed (migration generations or first time)
+            if is_migration_generation or island.diversity_score == 0.0:
+                island.diversity_score = self._calculate_island_diversity_optimized(island.population)
+            # Otherwise use cached diversity score
 
             # Track island stats
             generation_stats['island_stats'].append({
@@ -134,7 +151,8 @@ class IslandModelManager:
                 'best_fitness': island.best_fitness,
                 'avg_fitness': np.mean(island.fitness_scores),
                 'diversity': island.diversity_score,
-                'population_size': len(island.population)
+                'population_size': len(island.population),
+                'evolution_time': time.time() - island_start
             })
 
         # Check for global improvement
@@ -144,12 +162,15 @@ class IslandModelManager:
             self.global_best_individual = current_global_best[0].copy()
             generation_stats['global_improvement'] = True
 
-        # Handle migration
-        if self.islands[0].generation % self.migration_interval == 0:
+        # Handle migration with timing
+        if is_migration_generation:
+            migration_start = time.time()
             migration_stats = self.perform_migration()
             generation_stats['migration_occurred'] = True
             generation_stats['migration_stats'] = migration_stats
+            generation_stats['timing']['migration_time'] = time.time() - migration_start
 
+        generation_stats['timing']['total_time'] = time.time() - start_time
         return generation_stats
 
     def perform_migration(self) -> Dict[str, Any]:
@@ -170,237 +191,12 @@ class IslandModelManager:
         logging.info(f"Migration completed at generation {self.islands[0].generation}")
         return migration_stats
 
-    def _migrate_best_to_worst(self) -> Dict[str, Any]:
-        """Migrate best individuals from fit islands to least fit islands."""
-        # Sort islands by fitness
-        island_fitness = [(i, island.best_fitness) for i, island in enumerate(self.islands)]
-        island_fitness.sort(key=lambda x: x[1])  # Sort by fitness (ascending = better first)
 
-        num_migrants = max(1, int(self.island_size * self.migration_rate))
-        migrations = []
 
-        # Migrate from best half to worst half
-        best_half = island_fitness[:len(island_fitness)//2]
-        worst_half = island_fitness[len(island_fitness)//2:]
 
-        for (best_idx, _), (worst_idx, _) in zip(best_half, worst_half):
-            source_island = self.islands[best_idx]
-            target_island = self.islands[worst_idx]
 
-            # Select best individuals from source
-            source_fitness = source_island.fitness_scores
-            best_indices = np.argsort(source_fitness)[:num_migrants]
 
-            migrants = [source_island.population[i].copy() for i in best_indices]
 
-            # Replace worst individuals in target
-            target_fitness = target_island.fitness_scores
-            worst_indices = np.argsort(target_fitness)[-num_migrants:]
-
-            for i, migrant in enumerate(migrants):
-                replace_idx = worst_indices[i]
-                target_island.population[replace_idx] = migrant
-                target_island.fitness_scores[replace_idx] = float('inf')  # Will be re-evaluated
-
-            migrations.append({
-                'source': best_idx,
-                'target': worst_idx,
-                'migrants': len(migrants)
-            })
-
-        return {'migrations': migrations, 'total_migrants': len(migrations) * num_migrants}
-
-    def _migrate_random(self) -> Dict[str, Any]:
-        """Random migration between islands."""
-        num_migrants = max(1, int(self.island_size * self.migration_rate))
-        migrations = []
-
-        for island_idx in range(self.num_islands):
-            # Select random target island (different from source)
-            possible_targets = [i for i in range(self.num_islands) if i != island_idx]
-            target_idx = random.choice(possible_targets)
-
-            source_island = self.islands[island_idx]
-            target_island = self.islands[target_idx]
-
-            # Select random individuals for migration
-            migrant_indices = random.sample(range(len(source_island.population)), num_migrants)
-            migrants = [source_island.population[i].copy() for i in migrant_indices]
-
-            # Replace random individuals in target
-            replace_indices = random.sample(range(len(target_island.population)), num_migrants)
-
-            for i, migrant in enumerate(migrants):
-                replace_idx = replace_indices[i]
-                target_island.population[replace_idx] = migrant
-                target_island.fitness_scores[replace_idx] = float('inf')
-
-            migrations.append({
-                'source': island_idx,
-                'target': target_idx,
-                'migrants': len(migrants)
-            })
-
-        return {'migrations': migrations, 'total_migrants': len(migrations) * num_migrants}
-
-    def _migrate_ring(self) -> Dict[str, Any]:
-        """Ring topology migration - each island sends to next island in ring."""
-        num_migrants = max(1, int(self.island_size * self.migration_rate))
-        migrations = []
-
-        for island_idx in range(self.num_islands):
-            target_idx = (island_idx + 1) % self.num_islands
-
-            source_island = self.islands[island_idx]
-            target_island = self.islands[target_idx]
-
-            # Select best individuals from source
-            source_fitness = source_island.fitness_scores
-            best_indices = np.argsort(source_fitness)[:num_migrants]
-            migrants = [source_island.population[i].copy() for i in best_indices]
-
-            # Replace worst individuals in target
-            target_fitness = target_island.fitness_scores
-            worst_indices = np.argsort(target_fitness)[-num_migrants:]
-
-            for i, migrant in enumerate(migrants):
-                replace_idx = worst_indices[i]
-                target_island.population[replace_idx] = migrant
-                target_island.fitness_scores[replace_idx] = float('inf')
-
-            migrations.append({
-                'source': island_idx,
-                'target': target_idx,
-                'migrants': len(migrants)
-            })
-
-        return {'migrations': migrations, 'total_migrants': len(migrations) * num_migrants}
-
-    def _migrate_diversity_based(self) -> Dict[str, Any]:
-        """Migration based on diversity levels - low diversity islands receive immigrants."""
-        num_migrants = max(1, int(self.island_size * self.migration_rate))
-        migrations = []
-
-        # Calculate diversity for all islands
-        island_diversities = [(i, island.diversity_score) for i, island in enumerate(self.islands)]
-
-        # Sort by diversity (ascending = less diverse first)
-        island_diversities.sort(key=lambda x: x[1])
-
-        # Low diversity islands receive from high diversity islands
-        low_diversity = island_diversities[:len(island_diversities)//2]
-        high_diversity = island_diversities[len(island_diversities)//2:]
-
-        for (low_idx, _), (high_idx, _) in zip(low_diversity, high_diversity):
-            source_island = self.islands[high_idx]
-            target_island = self.islands[low_idx]
-
-            # Select diverse individuals from source (not just best)
-            migrants = self._select_diverse_migrants(source_island.population,
-                                                   source_island.fitness_scores,
-                                                   num_migrants)
-
-            # Replace similar individuals in target
-            replace_indices = self._select_similar_individuals(target_island.population, num_migrants)
-
-            for i, migrant in enumerate(migrants):
-                if i < len(replace_indices):
-                    replace_idx = replace_indices[i]
-                    target_island.population[replace_idx] = migrant
-                    target_island.fitness_scores[replace_idx] = float('inf')
-
-            migrations.append({
-                'source': high_idx,
-                'target': low_idx,
-                'migrants': len(migrants)
-            })
-
-        return {'migrations': migrations, 'total_migrants': len(migrations) * num_migrants}
-
-    def _select_diverse_migrants(self, population: List[np.ndarray], fitness_scores: List[float],
-                               num_migrants: int) -> List[np.ndarray]:
-        """Select diverse individuals for migration."""
-        if len(population) <= num_migrants:
-            return [ind.copy() for ind in population]
-
-        selected = []
-        remaining_indices = list(range(len(population)))
-
-        # Select first individual (best fitness)
-        best_idx = np.argmin(fitness_scores)
-        selected.append(population[best_idx].copy())
-        remaining_indices.remove(best_idx)
-
-        # Select remaining individuals to maximize diversity
-        for _ in range(num_migrants - 1):
-            if not remaining_indices:
-                break
-
-            best_candidate_idx = None
-            best_diversity_score = -1
-
-            for candidate_idx in remaining_indices:
-                candidate = population[candidate_idx]
-
-                # Calculate diversity relative to already selected individuals
-                diversity_score = 0
-                for selected_ind in selected:
-                    hamming_dist = np.sum(candidate != selected_ind)
-                    diversity_score += hamming_dist
-
-                # Normalize by number of comparisons and individual length
-                diversity_score /= (len(selected) * len(candidate))
-
-                if diversity_score > best_diversity_score:
-                    best_diversity_score = diversity_score
-                    best_candidate_idx = candidate_idx
-
-            if best_candidate_idx is not None:
-                selected.append(population[best_candidate_idx].copy())
-                remaining_indices.remove(best_candidate_idx)
-
-        return selected
-
-    def _select_similar_individuals(self, population: List[np.ndarray], num_to_select: int) -> List[int]:
-        """Select most similar individuals for replacement."""
-        if len(population) <= num_to_select:
-            return list(range(len(population)))
-
-        # Calculate pairwise similarities
-        similarity_scores = []
-        for i, individual in enumerate(population):
-            total_similarity = 0
-            for j, other in enumerate(population):
-                if i != j:
-                    similarity = 1.0 - (np.sum(individual != other) / len(individual))
-                    total_similarity += similarity
-
-            avg_similarity = total_similarity / (len(population) - 1) if len(population) > 1 else 0
-            similarity_scores.append((i, avg_similarity))
-
-        # Sort by similarity (descending = most similar first)
-        similarity_scores.sort(key=lambda x: x[1], reverse=True)
-
-        return [idx for idx, _ in similarity_scores[:num_to_select]]
-
-    def _calculate_island_diversity(self, population: List[np.ndarray]) -> float:
-        """Calculate simple diversity measure for an island."""
-        if len(population) < 2:
-            return 0.0
-
-        total_distance = 0
-        comparisons = 0
-
-        for i in range(len(population)):
-            for j in range(i + 1, len(population)):
-                distance = np.sum(population[i] != population[j])
-                total_distance += distance
-                comparisons += 1
-
-        avg_distance = total_distance / comparisons if comparisons > 0 else 0
-        max_possible_distance = len(population[0]) if population else 1
-
-        return avg_distance / max_possible_distance
 
     def get_global_best(self) -> Tuple[np.ndarray, float]:
         """Get the best individual across all islands."""
@@ -504,3 +300,395 @@ class IslandModelManager:
         if migration_rate is not None:
             self.migration_rate = migration_rate
             logging.info(f"Migration rate changed to: {migration_rate}")
+
+    # ============================================================================
+    # PHASE 2 & 3: PERFORMANCE OPTIMIZATION METHODS
+    # ============================================================================
+
+    def _evaluate_population_fitness(self, population: List[np.ndarray], fitness_evaluator) -> List[float]:
+        """Evaluate fitness for entire population with optional caching."""
+        fitness_scores = []
+        for individual in population:
+            if self.enable_fitness_cache:
+                # Create a hash of the individual for caching
+                ind_hash = hash(individual.tobytes())
+                if ind_hash in self.islands[0]._fitness_cache:
+                    fitness = self.islands[0]._fitness_cache[ind_hash]
+                else:
+                    fitness = fitness_evaluator.evaluate(individual)
+                    self.islands[0]._fitness_cache[ind_hash] = fitness
+            else:
+                fitness = fitness_evaluator.evaluate(individual)
+            fitness_scores.append(fitness)
+        return fitness_scores
+
+    def _incremental_fitness_evaluation(self, island: Island, pre_evolution_population: List[np.ndarray],
+                                       pre_evolution_fitness: List[float], fitness_evaluator) -> List[float]:
+        """Optimized fitness evaluation - only evaluate new/changed individuals."""
+        new_fitness_scores = []
+
+        for i, individual in enumerate(island.population):
+            # Try to find this individual in the pre-evolution population
+            found_match = False
+
+            # Fast comparison using array equality
+            for j, old_individual in enumerate(pre_evolution_population):
+                if np.array_equal(individual, old_individual):
+                    # Reuse existing fitness
+                    new_fitness_scores.append(pre_evolution_fitness[j])
+                    found_match = True
+                    break
+
+            if not found_match:
+                # New individual - evaluate fitness
+                if self.enable_fitness_cache:
+                    ind_hash = hash(individual.tobytes())
+                    if ind_hash in island._fitness_cache:
+                        fitness = island._fitness_cache[ind_hash]
+                    else:
+                        fitness = fitness_evaluator.evaluate(individual)
+                        island._fitness_cache[ind_hash] = fitness
+                else:
+                    fitness = fitness_evaluator.evaluate(individual)
+                new_fitness_scores.append(fitness)
+
+        return new_fitness_scores
+
+    def _update_island_best(self, island: Island) -> None:
+        """Fast update of island's best individual using numpy operations."""
+        if not island.fitness_scores:
+            return
+
+        fitness_array = np.array(island.fitness_scores)
+        best_idx = np.argmin(fitness_array)
+        current_best_fitness = fitness_array[best_idx]
+
+        if current_best_fitness < island.best_fitness:
+            island.best_fitness = current_best_fitness
+            island.best_individual = island.population[best_idx].copy()
+
+        # Update sorted fitness indices cache
+        island._sorted_fitness_indices = np.argsort(fitness_array)
+        island._sorted_fitness_valid = True
+
+    def _calculate_island_diversity_optimized(self, population: List[np.ndarray]) -> float:
+        """Fast diversity calculation using sampling and vectorization."""
+        if len(population) < 2:
+            return 0.0
+
+        # Use sampling for large populations
+        if len(population) > self.diversity_sample_size:
+            sample_indices = np.random.choice(len(population), self.diversity_sample_size, replace=False)
+            sample_pop = [population[i] for i in sample_indices]
+        else:
+            sample_pop = population
+
+        if len(sample_pop) < 2:
+            return 0.0
+
+        # Vectorized diversity calculation
+        pop_matrix = np.array([ind.flatten() for ind in sample_pop])
+
+        # Calculate pairwise hamming distances using broadcasting
+        distances = []
+        n_samples = len(pop_matrix)
+
+        # For small samples, use all pairs; for larger samples, use random pairs
+        if n_samples <= 10:
+            # Use all pairs
+            for i in range(n_samples):
+                for j in range(i + 1, n_samples):
+                    dist = np.sum(pop_matrix[i] != pop_matrix[j])
+                    distances.append(dist)
+        else:
+            # Use random sampling of pairs for efficiency
+            n_pairs = min(50, (n_samples * (n_samples - 1)) // 2)
+            for _ in range(n_pairs):
+                i, j = np.random.choice(n_samples, 2, replace=False)
+                dist = np.sum(pop_matrix[i] != pop_matrix[j])
+                distances.append(dist)
+
+        if not distances:
+            return 0.0
+
+        avg_distance = np.mean(distances)
+        max_possible_distance = len(pop_matrix[0]) if len(pop_matrix) > 0 else 1
+
+        return avg_distance / max_possible_distance
+
+    # ============================================================================
+    # OPTIMIZED MIGRATION METHODS
+    # ============================================================================
+
+    def _migrate_ring_optimized(self) -> Dict[str, Any]:
+        """Optimized ring topology migration using numpy operations."""
+        num_migrants = max(1, int(self.island_size * self.migration_rate))
+        migrations = []
+
+        for island_idx in range(self.num_islands):
+            target_idx = (island_idx + 1) % self.num_islands
+
+            source_island = self.islands[island_idx]
+            target_island = self.islands[target_idx]
+
+            # Use cached sorted indices if available
+            if source_island._sorted_fitness_valid and source_island._sorted_fitness_indices is not None:
+                best_indices = source_island._sorted_fitness_indices[:num_migrants]
+            else:
+                fitness_array = np.array(source_island.fitness_scores)
+                best_indices = np.argpartition(fitness_array, num_migrants)[:num_migrants]
+
+            # Select migrants
+            migrants = [source_island.population[i].copy() for i in best_indices]
+
+            # Fast replacement using argpartition
+            if target_island._sorted_fitness_valid and target_island._sorted_fitness_indices is not None:
+                worst_indices = target_island._sorted_fitness_indices[-num_migrants:]
+            else:
+                target_fitness = np.array(target_island.fitness_scores)
+                worst_indices = np.argpartition(target_fitness, -num_migrants)[-num_migrants:]
+
+            # Perform migration
+            for i, migrant in enumerate(migrants):
+                if i < len(worst_indices):
+                    replace_idx = worst_indices[i]
+                    target_island.population[replace_idx] = migrant
+                    target_island.fitness_scores[replace_idx] = source_island.fitness_scores[best_indices[i]]
+
+            # Invalidate sorted cache for target island
+            target_island._sorted_fitness_valid = False
+
+            migrations.append({
+                'source': island_idx,
+                'target': target_idx,
+                'migrants': len(migrants)
+            })
+
+        return {'migrations': migrations, 'total_migrants': len(migrations) * num_migrants}
+
+    def _migrate_best_to_worst_optimized(self) -> Dict[str, Any]:
+        """Optimized best-to-worst migration using pre-sorted fitness."""
+        # Sort islands by their best fitness
+        island_fitness = [(i, island.best_fitness) for i, island in enumerate(self.islands)]
+        island_fitness.sort(key=lambda x: x[1])
+
+        num_migrants = max(1, int(self.island_size * self.migration_rate))
+        migrations = []
+
+        # Migrate from best half to worst half
+        n_islands = len(island_fitness)
+        best_half = island_fitness[:n_islands//2]
+        worst_half = island_fitness[n_islands//2:]
+
+        for (best_idx, _), (worst_idx, _) in zip(best_half, worst_half):
+            source_island = self.islands[best_idx]
+            target_island = self.islands[worst_idx]
+
+            # Fast selection using numpy operations
+            source_fitness = np.array(source_island.fitness_scores)
+            best_indices = np.argpartition(source_fitness, num_migrants)[:num_migrants]
+
+            target_fitness = np.array(target_island.fitness_scores)
+            worst_indices = np.argpartition(target_fitness, -num_migrants)[-num_migrants:]
+
+            # Perform migration with fitness transfer
+            migrants = [source_island.population[i].copy() for i in best_indices]
+
+            for i, migrant in enumerate(migrants):
+                if i < len(worst_indices):
+                    replace_idx = worst_indices[i]
+                    target_island.population[replace_idx] = migrant
+                    target_island.fitness_scores[replace_idx] = source_island.fitness_scores[best_indices[i]]
+
+            # Invalidate caches
+            target_island._sorted_fitness_valid = False
+
+            migrations.append({
+                'source': best_idx,
+                'target': worst_idx,
+                'migrants': len(migrants)
+            })
+
+        return {'migrations': migrations, 'total_migrants': len(migrations) * num_migrants}
+
+    def _migrate_random_optimized(self) -> Dict[str, Any]:
+        """Optimized random migration with minimal overhead."""
+        num_migrants = max(1, int(self.island_size * self.migration_rate))
+        migrations = []
+
+        for island_idx in range(self.num_islands):
+            # Random target selection
+            possible_targets = [i for i in range(self.num_islands) if i != island_idx]
+            target_idx = random.choice(possible_targets)
+
+            source_island = self.islands[island_idx]
+            target_island = self.islands[target_idx]
+
+            # Random selection with numpy
+            migrant_indices = np.random.choice(len(source_island.population), num_migrants, replace=False)
+            replace_indices = np.random.choice(len(target_island.population), num_migrants, replace=False)
+
+            # Perform migration
+            for i, migrant_idx in enumerate(migrant_indices):
+                if i < len(replace_indices):
+                    replace_idx = replace_indices[i]
+                    target_island.population[replace_idx] = source_island.population[migrant_idx].copy()
+                    target_island.fitness_scores[replace_idx] = source_island.fitness_scores[migrant_idx]
+
+            # Invalidate caches
+            target_island._sorted_fitness_valid = False
+
+            migrations.append({
+                'source': island_idx,
+                'target': target_idx,
+                'migrants': len(migrant_indices)
+            })
+
+        return {'migrations': migrations, 'total_migrants': len(migrations) * num_migrants}
+
+    def _migrate_diversity_based_optimized(self) -> Dict[str, Any]:
+        """Optimized diversity-based migration with sampling."""
+        num_migrants = max(1, int(self.island_size * self.migration_rate))
+        migrations = []
+
+        # Calculate diversity for all islands (using cached values when possible)
+        island_diversities = []
+        for i, island in enumerate(self.islands):
+            if island._diversity_cache_generation == island.generation and island._diversity_cache >= 0:
+                diversity = island._diversity_cache
+            else:
+                diversity = self._calculate_island_diversity_optimized(island.population)
+                island._diversity_cache = diversity
+                island._diversity_cache_generation = island.generation
+            island_diversities.append((i, diversity))
+
+        # Sort by diversity
+        island_diversities.sort(key=lambda x: x[1])
+
+        # Low diversity islands receive from high diversity islands
+        n_islands = len(island_diversities)
+        low_diversity = island_diversities[:n_islands//2]
+        high_diversity = island_diversities[n_islands//2:]
+
+        for (low_idx, _), (high_idx, _) in zip(low_diversity, high_diversity):
+            source_island = self.islands[high_idx]
+            target_island = self.islands[low_idx]
+
+            # Select diverse migrants using fast sampling
+            migrants = self._select_diverse_migrants_optimized(
+                source_island.population, source_island.fitness_scores, num_migrants
+            )
+
+            # Replace random individuals (simplified for performance)
+            replace_indices = np.random.choice(len(target_island.population), len(migrants), replace=False)
+
+            for i, migrant in enumerate(migrants):
+                if i < len(replace_indices):
+                    replace_idx = replace_indices[i]
+                    target_island.population[replace_idx] = migrant
+                    # Re-evaluate fitness for migrant (simplified)
+                    target_island.fitness_scores[replace_idx] = float('inf')
+
+            # Invalidate caches
+            target_island._sorted_fitness_valid = False
+
+            migrations.append({
+                'source': high_idx,
+                'target': low_idx,
+                'migrants': len(migrants)
+            })
+
+        return {'migrations': migrations, 'total_migrants': len(migrations) * num_migrants}
+
+    def _select_diverse_migrants_optimized(self, population: List[np.ndarray],
+                                         fitness_scores: List[float], num_migrants: int) -> List[np.ndarray]:
+        """Fast diverse migrant selection using sampling."""
+        if len(population) <= num_migrants:
+            return [ind.copy() for ind in population]
+
+        selected = []
+
+        # Start with best individual
+        best_idx = np.argmin(fitness_scores)
+        selected.append(population[best_idx].copy())
+
+        if num_migrants == 1:
+            return selected
+
+        # For remaining slots, use random sampling for diversity (much faster)
+        remaining_indices = [i for i in range(len(population)) if i != best_idx]
+        additional_count = min(num_migrants - 1, len(remaining_indices))
+
+        if additional_count > 0:
+            additional_indices = np.random.choice(remaining_indices, additional_count, replace=False)
+            for idx in additional_indices:
+                selected.append(population[idx].copy())
+
+        return selected
+
+    # ============================================================================
+    # PHASE 3: ADVANCED ARCHITECTURAL OPTIMIZATIONS
+    # ============================================================================
+
+    def enable_performance_mode(self, cache_size_limit: int = 10000) -> None:
+        """Enable high-performance mode with aggressive caching and optimizations."""
+        self.enable_fitness_cache = True
+        self.lazy_diversity_calculation = True
+        self.diversity_sample_size = min(15, self.island_size // 3)  # Even more aggressive sampling
+
+        # Clear old caches to prevent memory issues
+        for island in self.islands:
+            if len(island._fitness_cache) > cache_size_limit:
+                # Keep only most recent cache entries
+                keys_to_remove = list(island._fitness_cache.keys())[:-cache_size_limit//2]
+                for key in keys_to_remove:
+                    del island._fitness_cache[key]
+
+        logging.info("Performance mode enabled with aggressive optimizations")
+
+    def get_performance_stats(self) -> Dict[str, Any]:
+        """Get detailed performance statistics for optimization analysis."""
+        total_cache_size = sum(len(island._fitness_cache) for island in self.islands)
+        cache_hit_estimates = {}
+
+        for i, island in enumerate(self.islands):
+            cache_hit_estimates[f'island_{i}'] = len(island._fitness_cache)
+
+        return {
+            'total_fitness_cache_entries': total_cache_size,
+            'cache_hit_estimates': cache_hit_estimates,
+            'diversity_sample_size': self.diversity_sample_size,
+            'lazy_diversity_enabled': self.lazy_diversity_calculation,
+            'performance_mode_enabled': self.enable_fitness_cache,
+            'migration_policy': self.migration_policy,
+            'optimization_level': 'Phase 3 - Full Architectural Optimization'
+        }
+
+    def optimize_for_population_size(self, population_size: int) -> None:
+        """Automatically adjust optimization parameters based on population size."""
+        if population_size <= 50:
+            # Small population - can afford more precision
+            self.diversity_sample_size = min(population_size // 2, 15)
+            self.enable_fitness_cache = True
+        elif population_size <= 200:
+            # Medium population - balanced approach
+            self.diversity_sample_size = min(population_size // 4, 20)
+            self.enable_fitness_cache = True
+        else:
+            # Large population - aggressive optimization
+            self.diversity_sample_size = min(population_size // 6, 25)
+            self.enable_fitness_cache = True
+
+        logging.info(f"Optimized parameters for population size {population_size}: "
+                    f"diversity_sample_size={self.diversity_sample_size}")
+
+    def clear_performance_caches(self) -> None:
+        """Clear all performance caches to free memory."""
+        for island in self.islands:
+            island._fitness_cache.clear()
+            island._diversity_cache = -1.0
+            island._diversity_cache_generation = -1
+            island._sorted_fitness_indices = None
+            island._sorted_fitness_valid = False
+
+        logging.info("All performance caches cleared")
