@@ -32,6 +32,8 @@ echo "Today I will: [write 1-2 specific goals]"
 - [ ] What are the 2-3 most important things to get right?
 - [ ] What mistakes do I typically make that I should watch for?
 - [ ] Am I feeling rushed? (If yes, slow down and be more explicit with AI)
+- [ ] **NEW**: Am I integrating components? (If yes, validate interfaces first)
+- [ ] **NEW**: Does this involve coordinate systems? (If yes, verify (width, height) convention)
 
 ---
 
@@ -59,6 +61,9 @@ echo "Today I will: [write 1-2 specific goals]"
 - ✅ "Using the existing utils pattern..."
 - ✅ "Check for similar implementations first..."
 - ✅ "Ensure this follows DRY principles..."
+- ✅ **NEW**: "Validate the interface before integrating..."
+- ✅ **NEW**: "Verify coordinate system consistency..."
+- ✅ **NEW**: "Check configuration propagation..."
 
 ---
 
@@ -109,6 +114,18 @@ git add . && git commit -m "feat: descriptive message following conventional com
 **Problem**: Working on multiple features and losing track of architectural decisions
 **Solution**: Use git branches and document decisions in commit messages
 
+### **6. Integration Boundary Neglect**
+**Problem**: Assuming interfaces work without validation (causes 75% of critical errors)
+**Solution**: Always validate data structures and coordinate systems at component boundaries
+
+### **7. Coordinate System Confusion**
+**Problem**: Different components using different (width, height) vs (height, width) conventions
+**Solution**: Establish and enforce single standard with validation functions
+
+### **8. Configuration Drift**
+**Problem**: Components using hardcoded values instead of reading from config
+**Solution**: Add logging to verify configuration values are properly propagated
+
 ---
 
 ## **🎨 Effective Communication with AI**
@@ -118,6 +135,9 @@ git add . && git commit -m "feat: descriptive message following conventional com
 - **Complex refactoring** - Explain the current state and desired end state
 - **Performance work** - Specify what "good enough" means for your use case
 - **Architecture decisions** - Share your reasoning and constraints
+- **Component integration** - Always mention interface validation requirements
+- **Coordinate system work** - Explicitly state (width, height) convention
+- **Configuration changes** - Request verification of value propagation
 
 ### **When You Can Be Less Explicit:**
 - **Small bug fixes** that don't affect architecture
@@ -129,8 +149,18 @@ git add . && git commit -m "feat: descriptive message following conventional com
 - You find yourself saying "that's not what I meant" frequently
 - The AI isn't following your established patterns
 - You're getting frustrated with the responses
+- **NEW**: Integration errors keep occurring (suggests missing interface validation)
+- **NEW**: Coordinate system bugs appearing (suggests inconsistent conventions)
+- **NEW**: Configuration values not reaching components (suggests hardcoded defaults)
 
 **Solution**: Take a break, re-read your guidelines, and restart with more explicit context.
+
+### **Critical Integration Warning Signs:**
+- **KeyError exceptions** during component interaction (interface mismatch)
+- **IndexError in array operations** (coordinate system inconsistency)
+- **Hardcoded values** being used instead of configuration parameters
+- **Different components** reporting different grid dimensions for same config
+- **Performance degradation** without obvious algorithmic changes (configuration drift)
 
 ---
 

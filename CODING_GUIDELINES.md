@@ -17,6 +17,8 @@ When starting any new Claude Code session, **AUTOMATICALLY** complete these step
 4. ✅ **Search before create** - Always grep for existing implementations before writing new code
 5. ✅ **Confirm utils-first** - Verify understanding of centralized utility pattern
 6. ✅ **Interface validation commitment** - For ANY system integration, validate interfaces before implementation
+7. ✅ **Coordinate system verification** - Confirm (width, height) standard is followed
+8. ✅ **Configuration propagation check** - Verify config values flow through all components
 
 ### **For Human Developers - START EVERY SESSION:**
 ```bash
@@ -234,6 +236,109 @@ def calculate_metric(data: List[np.ndarray], threshold: float = 0.5) -> float:
 
 ## **🔗 System Integration Guidelines**
 
+### **⚠️ Critical Error Prevention Patterns**
+**Based on analysis of resolved technical debt, these patterns prevent 75% of integration boundary failures:**
+
+#### **Coordinate System Standardization**
+- **MANDATORY**: Document coordinate conventions in every component
+- **Rule**: Always use `(width, height)` order throughout entire codebase
+- **Validation**: Add assertions to verify grid dimension interpretation
+
+```python
+# ✅ REQUIRED: Coordinate system validation
+def validate_grid_coordinates(grid_size: tuple, context: str = ""):
+    """Ensure consistent (width, height) interpretation."""
+    assert len(grid_size) == 2, f"Grid size must be (width, height) tuple in {context}"
+    width, height = grid_size
+    assert width > 0 and height > 0, f"Invalid grid dimensions {grid_size} in {context}"
+    logging.debug(f"{context}: Using grid (width={width}, height={height})")
+    return width, height
+
+# Use this EVERYWHERE grid_size is processed
+grid_width, grid_height = validate_grid_coordinates(config.grid_size, "island_model")
+```
+
+#### **Interface Boundary Validation**
+- **MANDATORY**: Validate all data structure assumptions at component boundaries
+- **Pattern**: Never assume key names or data structures without verification
+- **Implementation**: Add defensive checks at every integration point
+
+```python
+# ✅ REQUIRED: Interface validation pattern
+def validate_migration_interface(migration_data: dict, source_component: str = "unknown"):
+    """Validate migration data structure before processing."""
+    required_keys = {'source', 'target', 'migrants'}
+    actual_keys = set(migration_data.keys())
+    missing_keys = required_keys - actual_keys
+
+    if missing_keys:
+        available_keys = list(migration_data.keys())
+        raise ValueError(
+            f"Migration interface validation failed in {source_component}. "
+            f"Missing keys: {missing_keys}. Available keys: {available_keys}"
+        )
+
+    # Validate data types
+    assert isinstance(migration_data['migrants'], (list, np.ndarray)), \
+        f"Expected migrants to be list/array, got {type(migration_data['migrants'])}"
+
+    return migration_data
+```
+
+#### **Configuration Propagation Validation**
+- **MANDATORY**: Verify configuration values are properly read from config objects
+- **Anti-Pattern**: Never use hardcoded default values when config exists
+- **Implementation**: Add logging to verify configuration propagation
+
+```python
+# ✅ REQUIRED: Configuration validation pattern
+def validate_config_propagation(config: CollageConfig, component: str = "unknown"):
+    """Ensure configuration values are properly loaded."""
+    # Log actual configuration values being used
+    genetic_params = config.genetic_params
+    logging.info(f"{component} using configuration:")
+    logging.info(f"  - Population size: {genetic_params.population_size}")
+    logging.info(f"  - Mutation rate: {genetic_params.mutation_rate}")
+    logging.info(f"  - Grid size: {config.grid_size}")
+
+    # Validate critical parameters aren't using fallback defaults
+    assert genetic_params.population_size > 0, f"Invalid population size in {component}"
+    assert 0 <= genetic_params.mutation_rate <= 1, f"Invalid mutation rate in {component}"
+
+    return config
+
+# Use this pattern when initializing components with configuration
+def component_init(self, config: CollageConfig):
+    validated_config = validate_config_propagation(config, self.__class__.__name__)
+    # Use validated_config.genetic_params.population_size instead of hardcoded values
+```
+
+#### **Array Index Bounds Validation**
+- **MANDATORY**: Add bounds checking for all array access operations
+- **Pattern**: Validate indices before array access, especially in loops
+- **Implementation**: Use safe array access patterns
+
+```python
+# ✅ REQUIRED: Safe array access pattern
+def safe_array_access(array: np.ndarray, i: int, j: int, context: str = "unknown"):
+    """Safe 2D array access with bounds checking."""
+    height, width = array.shape[:2]
+
+    if not (0 <= i < height and 0 <= j < width):
+        raise IndexError(
+            f"Array access out of bounds in {context}: "
+            f"index ({i}, {j}) for array shape {array.shape}"
+        )
+
+    return array[i, j]
+
+# Use this pattern for critical array operations
+target_tile = safe_array_access(
+    self.target_tiles_gpu[device_id], i, j,
+    f"GPU evaluator device {device_id}"
+)
+```
+
 ### **Interface Discovery Protocol - MANDATORY**
 **Before integrating any two systems, ALWAYS validate interfaces first.**
 
@@ -319,6 +424,58 @@ def good_integration(migration_data):
         logging.warning(f"No migrants in data: {migration_data}")
         return
 ```
+
+### **Mandatory Integration Testing**
+**Based on TECH_DEBT.md analysis: 75% of errors occur at component boundaries**
+
+#### **Integration Test Requirements**
+- **MANDATORY**: Test all cross-component interactions before deployment
+- **Pattern**: Create integration tests for every component boundary
+- **Implementation**: Add specific test cases for coordinate system consistency
+
+```python
+# ✅ REQUIRED: Integration test template
+def test_component_integration():
+    """Test coordinate system consistency across components."""
+    config = CollageConfig()
+    config.grid_size = (20, 15)  # (width, height)
+
+    # Test island model interpretation
+    island_model = IslandModel(config)
+    assert island_model.grid_width == 20, "Island model width mismatch"
+    assert island_model.grid_height == 15, "Island model height mismatch"
+
+    # Test GA engine interpretation
+    ga_engine = GeneticAlgorithmEngine(config)
+    individual = ga_engine.create_individual()
+    assert individual.shape == (15, 20), f"GA individual shape mismatch: {individual.shape}"
+
+    # Test GPU evaluator interpretation
+    if config.gpu_config.enable_gpu:
+        gpu_evaluator = GPUFitnessEvaluator(config)
+        target_image = np.random.randint(0, 255, (480, 640, 3))  # Random test image
+        gpu_evaluator.set_target(target_image, {})
+        # Should not raise IndexError
+        fitness = gpu_evaluator.evaluate(individual, [], [])
+
+def test_migration_data_structure():
+    """Test migration interface consistency."""
+    island_model = IslandModel(config)
+    migration_data = island_model.get_migration_data()
+
+    # Validate expected interface
+    validate_migration_interface(migration_data, "island_model_test")
+
+    # Test that lineage tracker can process this format
+    lineage_tracker = LineageTracker(config)
+    lineage_tracker.record_migration(migration_data)  # Should not fail
+```
+
+#### **Cross-Component Validation Tests**
+- **Configuration propagation**: Verify config values reach all components
+- **Data structure consistency**: Test that interfaces match expectations
+- **Coordinate system validation**: Ensure all components use same conventions
+- **Performance boundaries**: Test that O(n²) algorithms use sampling
 
 ### **Interface Evolution Safety**
 - **Document interface dependencies** in docstrings
