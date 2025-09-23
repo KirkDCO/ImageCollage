@@ -430,7 +430,7 @@ class IslandModelManager:
 
     def update_populations_and_fitness(self, population: List[np.ndarray], fitness_scores: List[float]) -> None:
         """Update island populations with evolved individuals and fitness scores."""
-        if not population or not fitness_scores:
+        if len(population) == 0 or len(fitness_scores) == 0:
             return
 
         # Distribute population back to islands
