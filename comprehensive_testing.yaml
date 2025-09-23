@@ -7,11 +7,11 @@
 
 # === BASIC SETTINGS ===
 basic_settings:
-  grid_size: [12, 16] #[60, 80]               # 4800 tiles - substantial complexity, preserves 4:3 aspect ratio
+  grid_size: [6, 8] #[60, 80]               # 4800 tiles - substantial complexity, preserves 4:3 aspect ratio
   tile_size: [32, 32]               # Standard tile size for good detail
   allow_duplicate_tiles: false      # NO duplicates - forces diverse solutions and lineage complexity
   random_seed: 12345                # Different seed from showcase for independent validation
-  enable_lineage_tracking: true     # ENABLE complete genealogical analysis
+  enable_lineage_tracking: false     # ENABLE complete genealogical analysis
   lineage_output_dir: "lineage_comprehensive"  # Comprehensive lineage data
   enable_diagnostics: true          # ENABLE comprehensive diagnostics analysis
   diagnostics_output_dir: "diagnostics_comprehensive"  # Complete diagnostic reports
@@ -19,7 +19,7 @@ basic_settings:
 # === GENETIC ALGORITHM PARAMETERS ===
 genetic_algorithm:
   # Core GA Parameters - optimized for comprehensive overnight testing
-  population_size: 75              # Larger population for richer lineage trees
+  population_size: 21              # Larger population for richer lineage trees
   max_generations: 250              # Overnight run - plenty of generations for thorough testing
   crossover_rate: 0.75               # Moderate crossover for balanced birth method distribution
   mutation_rate: 0.15                # Higher mutation for diversity and lineage complexity
@@ -47,7 +47,7 @@ genetic_algorithm:
   # Multi-Population Island Model - ENABLE for extensive migration analysis
   enable_island_model: true             # Test island model evolution extensively
   island_model_num_islands: 3           # More islands for complex migration patterns
-  island_model_migration_interval: 20   # Migrate every 20 generations for rich patterns
+  island_model_migration_interval: 2   # Migrate every 20 generations for rich patterns
   island_model_migration_rate: 0.10     # Moderate migration for balanced populations
 
 # === FITNESS EVALUATION ===
@@ -86,7 +86,7 @@ output:
 # === CHECKPOINT SYSTEM ===
 checkpoint_system:
   # Comprehensive crash recovery - critical for overnight runs and resume testing
-  enable_checkpoints: true           # ENABLE checkpoint saving
+  enable_checkpoints: true # ENABLE checkpoint saving
   checkpoint_interval: 25            # Save every 25 generations (80 checkpoints total)
   max_checkpoints: 15                # Keep many checkpoints for resume testing
   checkpoint_dir: "checkpoints_comprehensive"  # Dedicated checkpoint directory
@@ -112,7 +112,7 @@ intelligent_restart:
 diversity_dashboard:
   # Real-time diversity monitoring - comprehensive tracking
   enable_diversity_dashboard: true   # ENABLE real-time dashboard
-  dashboard_update_interval: 10      # Update every 10 generations for detailed tracking
+  dashboard_update_interval: 5      # Update every 10 generations for detailed tracking
   dashboard_alert_critical_diversity: 0.08   # Lower critical threshold for testing alerts
   dashboard_alert_low_diversity: 0.15        # Lower warning threshold for more alerts
 

@@ -12,6 +12,12 @@ except ImportError:
     cp = None
     CUPY_AVAILABLE = False
 
+# For type annotations when CuPy is not available
+if not CUPY_AVAILABLE:
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        import cupy as cp
+
 from ..config.settings import CollageConfig
 from .evaluator import FitnessEvaluator
 
@@ -301,7 +307,7 @@ class GPUFitnessEvaluator(FitnessEvaluator):
         
         return total_fitness / (grid_height * grid_width)
     
-    def _gpu_tile_fitness(self, target_tile_gpu: cp.ndarray, source_tile_gpu: cp.ndarray) -> float:
+    def _gpu_tile_fitness(self, target_tile_gpu: 'cp.ndarray', source_tile_gpu: 'cp.ndarray') -> float:
         """GPU-accelerated tile fitness calculation."""
         weights = self.config.fitness_weights
         
@@ -317,7 +323,7 @@ class GPUFitnessEvaluator(FitnessEvaluator):
         
         return color_fitness + luminance_fitness + texture_fitness + edge_fitness
     
-    def _gpu_color_similarity(self, target_gpu: cp.ndarray, source_gpu: cp.ndarray) -> float:
+    def _gpu_color_similarity(self, target_gpu: 'cp.ndarray', source_gpu: 'cp.ndarray') -> float:
         """GPU-accelerated color similarity using mean color distance."""
         target_mean = cp.mean(target_gpu, axis=(0, 1))
         source_mean = cp.mean(source_gpu, axis=(0, 1))
@@ -326,7 +332,7 @@ class GPUFitnessEvaluator(FitnessEvaluator):
         distance = cp.linalg.norm(target_mean - source_mean)
         return float(distance.get()) / (255.0 * float(cp.sqrt(3).get()))
     
-    def _gpu_luminance_similarity(self, target_gpu: cp.ndarray, source_gpu: cp.ndarray) -> float:
+    def _gpu_luminance_similarity(self, target_gpu: 'cp.ndarray', source_gpu: 'cp.ndarray') -> float:
         """GPU-accelerated luminance similarity."""
         # Convert to grayscale using standard weights
         target_gray = cp.dot(target_gpu, cp.array([0.299, 0.587, 0.114]))
@@ -337,14 +343,14 @@ class GPUFitnessEvaluator(FitnessEvaluator):
         
         return float(cp.abs(target_mean - source_mean).get()) / 255.0
     
-    def _gpu_texture_similarity(self, target_gpu: cp.ndarray, source_gpu: cp.ndarray) -> float:
+    def _gpu_texture_similarity(self, target_gpu: 'cp.ndarray', source_gpu: 'cp.ndarray') -> float:
         """Simplified GPU texture similarity using standard deviation."""
         target_std = cp.std(target_gpu)
         source_std = cp.std(source_gpu)
         
         return float(cp.abs(target_std - source_std).get()) / 255.0
     
-    def _gpu_edge_similarity(self, target_gpu: cp.ndarray, source_gpu: cp.ndarray) -> float:
+    def _gpu_edge_similarity(self, target_gpu: 'cp.ndarray', source_gpu: 'cp.ndarray') -> float:
         """GPU-accelerated edge similarity using gradient magnitude."""
         # Simple gradient-based edge detection
         target_gray = cp.dot(target_gpu, cp.array([0.299, 0.587, 0.114]))
@@ -362,7 +368,7 @@ class GPUFitnessEvaluator(FitnessEvaluator):
         
         return float(cp.abs(target_edge - source_edge).get()) / 255.0
     
-    def _extract_gpu_colors(self, tiles_gpu: cp.ndarray) -> cp.ndarray:
+    def _extract_gpu_colors(self, tiles_gpu: 'cp.ndarray') -> 'cp.ndarray':
         """Extract color information for efficient GPU processing."""
         return tiles_gpu.astype(cp.float32) / 255.0
     
