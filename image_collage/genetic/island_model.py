@@ -448,7 +448,7 @@ class IslandModelManager:
             island.fitness_scores = fitness_scores[start_idx:end_idx]
 
             # Update island's best individual and fitness
-            if island.fitness_scores:
+            if len(island.fitness_scores) > 0:
                 best_idx = np.argmin(island.fitness_scores)
                 island.best_fitness = island.fitness_scores[best_idx]
                 island.best_individual = island.population[best_idx].copy()
@@ -475,8 +475,8 @@ class IslandModelManager:
                 'generation': island.generation,
                 'population_size': len(island.population),
                 'best_fitness': island.best_fitness,
-                'avg_fitness': np.mean(island.fitness_scores) if island.fitness_scores else float('inf'),
-                'worst_fitness': max(island.fitness_scores) if island.fitness_scores else float('inf'),
+                'avg_fitness': np.mean(island.fitness_scores) if len(island.fitness_scores) > 0 else float('inf'),
+                'worst_fitness': max(island.fitness_scores) if len(island.fitness_scores) > 0 else float('inf'),
                 'diversity_score': island.diversity_score
             }
             island_stats.append(island_stat)
