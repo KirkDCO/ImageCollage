@@ -8,7 +8,7 @@
 
 **Recommended alias for ~/.bashrc or ~/.zshrc:**
 ```bash
-alias cstart='cd /opt/Projects/ImageCollage && claude "Review SESSION_STARTUP.md and follow the instructions."'
+alias cstart='claude "Review SESSION_STARTUP.md and follow the instructions."'
 ```
 
 ### 👤 Human Developer Resources:
