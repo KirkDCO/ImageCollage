@@ -16,6 +16,7 @@ When starting any new Claude Code session, **AUTOMATICALLY** complete these step
 3. ✅ **Review project architecture** - Understand existing utils/ and module structure
 4. ✅ **Search before create** - Always grep for existing implementations before writing new code
 5. ✅ **Confirm utils-first** - Verify understanding of centralized utility pattern
+6. ✅ **Interface validation commitment** - For ANY system integration, validate interfaces before implementation
 
 ### **For Human Developers - START EVERY SESSION:**
 ```bash
@@ -228,6 +229,136 @@ def calculate_metric(data: List[np.ndarray], threshold: float = 0.5) -> float:
     if len(data) > 50:
         # Use sampling...
 ```
+
+---
+
+## **🔗 System Integration Guidelines**
+
+### **Interface Discovery Protocol - MANDATORY**
+**Before integrating any two systems, ALWAYS validate interfaces first.**
+
+#### **Step 1: Examine Actual Interface**
+```python
+# ✅ REQUIRED: Investigate return types and data structures
+target_object = TargetClass()
+result = target_object.target_method()
+print(f"Actual return type: {type(result)}")
+print(f"Actual structure: {result}")
+
+# For complex objects, examine keys/attributes
+if isinstance(result, dict):
+    print(f"Dictionary keys: {result.keys()}")
+    if result:  # If not empty
+        first_item = next(iter(result.values()))
+        print(f"First item type: {type(first_item)}")
+        if hasattr(first_item, 'keys'):
+            print(f"First item keys: {first_item.keys()}")
+```
+
+#### **Step 2: Search for Existing Usage**
+```bash
+# ✅ REQUIRED: Find how interface is actually used elsewhere
+grep -r "target_method" . --include="*.py"
+grep -r "result_variable" . --include="*.py"
+grep -r "expected_key_name" . --include="*.py"
+```
+
+#### **Step 3: Validate Integration Before Implementation**
+```python
+# ✅ REQUIRED: Test integration logic with minimal example
+def validate_integration():
+    """Test integration assumptions before full implementation."""
+    source_system = SourceClass()
+    target_system = TargetClass()
+
+    # Get actual data
+    source_data = source_system.get_data()
+    target_result = target_system.process_data()
+
+    # Validate expected interface
+    print(f"Source provides: {type(source_data)}")
+    print(f"Target expects: {target_result}")
+    print(f"Keys available: {getattr(source_data, 'keys', lambda: 'No keys')()}")
+
+    # Test key operations that will be used
+    try:
+        test_value = source_data['expected_key']
+        print(f"✅ Key 'expected_key' exists: {type(test_value)}")
+    except KeyError as e:
+        print(f"❌ Key missing: {e}")
+        print(f"Available keys: {list(source_data.keys())}")
+
+    return True
+
+# Run validation BEFORE implementing integration
+validate_integration()
+```
+
+### **Integration Anti-Patterns to Avoid**
+❌ **Never assume data structures without verification**
+```python
+# BAD: Assumption-based programming
+def bad_integration(migration_data):
+    individual = migration_data['individual']  # KeyError if key doesn't exist
+    source = migration_data['source_island']   # Assumes naming convention
+```
+
+✅ **Always use defensive programming with verification**
+```python
+# GOOD: Verified integration with fallbacks
+def good_integration(migration_data):
+    # First, understand the actual structure
+    print(f"Migration data keys: {migration_data.keys()}")
+
+    # Use actual keys with safe access
+    individual = migration_data.get('migrants', [])  # Use actual key name
+    source = migration_data.get('source', -1)        # Use actual key name
+
+    # Validate assumptions
+    if not individual:
+        logging.warning(f"No migrants in data: {migration_data}")
+        return
+```
+
+### **Interface Evolution Safety**
+- **Document interface dependencies** in docstrings
+- **Use explicit version checks** when interface changes are expected
+- **Create integration tests** that validate interface contracts
+- **Add interface validation** to automated testing
+
+```python
+def safe_interface_usage(data_source):
+    """
+    Interface contract: data_source expected to return dict with keys:
+    - 'migrations': list of migration events
+    - Each migration event contains: {'source': int, 'target': int, 'migrants': int}
+
+    Last verified: 2025-09-23
+    """
+    result = data_source.get_migrations()
+
+    # Validate interface contract
+    assert isinstance(result, dict), f"Expected dict, got {type(result)}"
+    assert 'migrations' in result, f"Missing 'migrations' key in {result.keys()}"
+
+    for migration in result['migrations']:
+        required_keys = {'source', 'target', 'migrants'}
+        actual_keys = set(migration.keys())
+        missing_keys = required_keys - actual_keys
+        assert not missing_keys, f"Missing keys {missing_keys} in migration data"
+
+    return result
+```
+
+### **Debugging Integration Failures**
+When integration errors occur:
+
+1. **Print actual vs expected data structures**
+2. **Check if interface has evolved since last working version**
+3. **Validate all key assumptions with print statements**
+4. **Use defensive programming for all external data access**
+
+**Remember**: 5 minutes of interface investigation prevents hours of debugging.
 
 ---
 
