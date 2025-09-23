@@ -428,6 +428,33 @@ class IslandModelManager:
             total_fitness.extend(island.fitness_scores)
         return total_fitness
 
+    def update_populations_and_fitness(self, population: List[np.ndarray], fitness_scores: List[float]) -> None:
+        """Update island populations with evolved individuals and fitness scores."""
+        if not population or not fitness_scores:
+            return
+
+        # Distribute population back to islands
+        pop_per_island = len(population) // self.num_islands
+        remaining = len(population) % self.num_islands
+
+        start_idx = 0
+        for island_idx, island in enumerate(self.islands):
+            # Calculate how many individuals this island gets
+            island_size = pop_per_island + (1 if island_idx < remaining else 0)
+            end_idx = start_idx + island_size
+
+            # Update island population and fitness
+            island.population = population[start_idx:end_idx]
+            island.fitness_scores = fitness_scores[start_idx:end_idx]
+
+            # Update island's best individual and fitness
+            if island.fitness_scores:
+                best_idx = np.argmin(island.fitness_scores)
+                island.best_fitness = island.fitness_scores[best_idx]
+                island.best_individual = island.population[best_idx].copy()
+
+            start_idx = end_idx
+
     def get_island_statistics(self) -> Dict[str, Any]:
         """Get comprehensive statistics for all islands."""
         stats = {

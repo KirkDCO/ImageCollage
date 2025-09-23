@@ -238,6 +238,7 @@ class CollageGenerator:
         if self.config.enable_lineage_tracking:
             try:
                 from ..lineage import LineageTracker, LineageVisualizer
+                from ..lineage.fitness_components import FitnessComponentTracker
 
                 # Create lineage output directory - prioritize config setting
                 if self.config.lineage_output_dir:
@@ -254,7 +255,13 @@ class CollageGenerator:
                     lineage_dir = Path("lineage_output")
 
                 lineage_tracker = LineageTracker(str(lineage_dir))
-                lineage_visualizer = LineageVisualizer(lineage_tracker, str(lineage_dir))
+
+                # Create fitness component tracker if enabled
+                fitness_component_tracker = None
+                if self.config.enable_component_tracking:
+                    fitness_component_tracker = FitnessComponentTracker(['color', 'luminance', 'texture', 'edges'])
+
+                lineage_visualizer = LineageVisualizer(lineage_tracker, str(lineage_dir), fitness_component_tracker)
 
                 # Connect lineage tracker to GA engine
                 self.ga_engine.set_lineage_tracker(lineage_tracker)
@@ -939,6 +946,7 @@ class CollageGenerator:
         if self.config.enable_lineage_tracking:
             try:
                 from ..lineage import LineageTracker, LineageVisualizer
+                from ..lineage.fitness_components import FitnessComponentTracker
 
                 # Create lineage output directory - prioritize config setting
                 if self.config.lineage_output_dir:
@@ -955,7 +963,13 @@ class CollageGenerator:
                     lineage_dir = Path("lineage_output")
 
                 lineage_tracker = LineageTracker(str(lineage_dir))
-                lineage_visualizer = LineageVisualizer(lineage_tracker, str(lineage_dir))
+
+                # Create fitness component tracker if enabled
+                fitness_component_tracker = None
+                if self.config.enable_component_tracking:
+                    fitness_component_tracker = FitnessComponentTracker(['color', 'luminance', 'texture', 'edges'])
+
+                lineage_visualizer = LineageVisualizer(lineage_tracker, str(lineage_dir), fitness_component_tracker)
 
                 # Connect lineage tracker to GA engine
                 self.ga_engine.set_lineage_tracker(lineage_tracker)

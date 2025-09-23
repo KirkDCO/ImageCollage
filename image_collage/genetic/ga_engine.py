@@ -226,6 +226,34 @@ class GeneticAlgorithmEngine:
             new_population = self._population_restart(new_population, restart_ratio)
             self.stagnation_counter = 0
 
+        # Island model migration if enabled
+        if self.use_island_model and self.island_model_manager:
+            # Check if it's time for migration
+            if self.generation % self.migration_interval == 0 and self.generation > 0:
+                # Update island populations with new generation
+                self.island_model_manager.update_populations_and_fitness(new_population, fitness_scores)
+
+                # Perform migration
+                migration_stats = self.island_model_manager.perform_migration()
+
+                # Track migration events for lineage if available
+                if self.lineage_tracker and migration_stats and 'migrations' in migration_stats:
+                    for migration in migration_stats['migrations']:
+                        try:
+                            # Track immigration birth method for migrants
+                            immigrant_id = self.lineage_tracker.track_immigration(
+                                migration['individual'],
+                                0.0,  # Fitness will be updated later
+                                source_island=migration.get('source_island', -1)
+                            )
+                        except Exception as e:
+                            logging.warning(f"Lineage tracking failed for migration: {e}")
+
+                # Get updated population after migration
+                new_population = self.island_model_manager.get_total_population()[:self.population_size]
+
+                logging.info(f"Migration performed at generation {self.generation}: {len(migration_stats.get('migrations', []))} individuals migrated")
+
         self.population = new_population
         self.generation += 1
     
