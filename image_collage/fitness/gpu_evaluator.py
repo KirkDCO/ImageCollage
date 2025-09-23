@@ -257,9 +257,7 @@ class GPUFitnessEvaluator(FitnessEvaluator):
                 j = actual_idx % grid_width
                 
                 if i < grid_height and j < grid_width:
-                    # Fix dimension mismatch: individual is (30,25) but target_tiles is (25,30)
-                    # Swap indices to match target tiles shape
-                    target_tile_gpu = self.target_tiles_gpu[device_id][j, i]
+                    target_tile_gpu = self.target_tiles_gpu[device_id][i, j]
                     
                     # Always create source tile on current device to avoid cross-device issues
                     source_tile_gpu = cp.asarray(source_images[source_idx])
@@ -293,9 +291,7 @@ class GPUFitnessEvaluator(FitnessEvaluator):
                     continue
 
                 source_idx = individual[i, j]
-                # Fix dimension mismatch: individual is (30,25) but target_tiles is (25,30)
-                # Swap indices to match target tiles shape
-                target_tile_gpu = self.target_tiles_gpu[device_id][j, i]
+                target_tile_gpu = self.target_tiles_gpu[device_id][i, j]
                 source_tile_gpu = cp.asarray(source_images[source_idx])
                 
                 tile_fitness = self._gpu_tile_fitness(target_tile_gpu, source_tile_gpu)
