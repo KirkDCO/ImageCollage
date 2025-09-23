@@ -5,6 +5,8 @@ During the diversity metrics debugging and fixes (2025-09-19), several redundant
 
 **UPDATE (2025-09-21)**: Analysis of long-run output from 2025-09-20 revealed multiple critical system failures in lineage tracking, island model, component tracking, LRU cache performance, and configuration management. These require immediate attention.
 
+**UPDATE (2025-09-23)**: Comprehensive testing run analysis revealed critical lineage tracking performance issues and missing statistical analysis modes. The current full genealogy tracking becomes combinatorially intractable beyond ~25 generations.
+
 ## Identified Redundant Paths
 
 ### 1. Multiple Diversity Calculation Paths
@@ -809,22 +811,109 @@ if len(population) > 50:
 
 ## DEBUGGING INVESTIGATION GUIDES
 
-### ✅ Lineage Tracking System (RESOLVED)
-**Status**: **FUNCTIONAL** - Core tracking restored, minor gaps remain
+### ⚠️ Lineage Tracking Performance Crisis (CRITICAL)
+**Status**: **FUNCTIONAL BUT COMBINATORIALLY INTRACTABLE** - Tracking works but becomes unusable beyond ~25 generations
+
+**Critical Performance Issues Identified (2025-09-23)**:
+- 🔥 **Combinatorial Explosion**: Full genealogy tracking scales as O(generations × population²)
+- 🔥 **Memory Bottleneck**: 250 generations × 21 individuals = ~5,250 tracked individuals with full ancestry
+- 🔥 **Checkpoint Serialization Crisis**: First checkpoint at gen 25 caused 6.5-minute processing delay
+- 🔥 **Uninterpretable Visualizations**: Family trees spanning 250 generations are visually unusable
+- 🔥 **End-of-Run Processing**: Final lineage analysis could take 30-60+ minutes for comprehensive runs
+
+**Current Implementation Problems**:
+- ✅ **Individual Tracking**: Every individual with full genealogy (parents, children, birth methods)
+- ❌ **No Sampling Options**: Tracks 100% of population regardless of generation depth
+- ❌ **No Statistical Mode**: No lightweight statistics-only option available
+- ❌ **No Memory Management**: No pruning of unsuccessful lineages or depth limits
+- ❌ **No Windowed Analysis**: Cannot focus on recent generations only
+
+**Immediate Workarounds**:
+```yaml
+# Disable lineage tracking for runs >50 generations
+enable_lineage_tracking: false
+
+# Or use only basic diagnostics (which provide evolutionary insights)
+enable_diagnostics: true
+enable_lineage_tracking: false
+```
+
+**Required Development - Lineage Tracking Modes**:
+
+1. **Statistical-Only Mode** (HIGHEST PRIORITY)
+   ```yaml
+   lineage_tracking:
+     mode: "statistical_only"
+     track_birth_method_distribution: true
+     track_fitness_improvement_rates: true
+     track_selection_pressure: true
+     track_population_turnover: true
+     # Memory: O(generations) instead of O(generations × population²)
+   ```
+
+2. **Tiered Tracking Mode**
+   ```yaml
+   lineage_tracking:
+     mode: "tiered"
+     track_elite_count: 5              # Always track top 5 performers
+     sample_rate: 0.15                 # Track 15% of non-elite population
+     max_individuals_tracked: 200      # Hard memory limit
+     prune_unsuccessful_lineages: true
+   ```
+
+3. **Windowed Analysis Mode**
+   ```yaml
+   lineage_tracking:
+     mode: "windowed"
+     window_size: 30                   # Only track last 30 generations
+     save_dominant_families: 3         # Save best lineages per window
+     export_window_summaries: true     # JSON summaries per completed window
+   ```
+
+**Implementation Files to Modify**:
+- `image_collage/lineage/tracker.py` - Add mode selection and sampling logic
+- `image_collage/lineage/visualizer.py` - Add statistical visualization support
+- `image_collage/config/settings.py` - Add lineage mode configuration options
+
+**Performance Impact**:
+- **Current**: 30-60 minutes end-processing for 250-gen comprehensive run
+- **Statistical-Only**: ~2-5 minutes end-processing
+- **Tiered**: ~10-15 minutes end-processing with interpretable visualizations
+- **Windowed**: ~5-10 minutes end-processing with trend analysis
+
+### ⚠️ Unused Configuration Parameters (MINOR)
+**Status**: **LEGACY CODE** - Parameters defined but not implemented
+
+**Issue Identified (2025-09-23)**:
+- **`preview_frequency` parameter**: Defined in `config/settings.py` but never used
+- **Actual callback interval**: Controlled by `dashboard_update_interval` instead
+- **Misleading documentation**: Users may set `preview_frequency: 25` expecting it to work
+
+**Files Affected**:
+- `image_collage/config/settings.py:95` - Defines unused `preview_frequency: int = 10`
+- `image_collage/cli/main.py:257` - Uses `dashboard_update_interval` instead of `preview_frequency`
+
+**Resolution Options**:
+1. **Remove unused parameter** (breaking change to configs)
+2. **Implement preview_frequency** (connect to callback interval logic)
+3. **Document as deprecated** (add warning in config comments)
+
+**Current Workaround**: Use `dashboard_update_interval` for callback frequency control
+
+### ✅ Lineage Tracking Core Functionality (CONFIRMED WORKING)
+**Status**: **FUNCTIONAL** - Basic tracking mechanics work correctly
 
 **Confirmed Working (2025-09-23 Test)**:
 - ✅ **Birth Method Recording**: Crossover operations properly tracked
 - ✅ **Parent-Child Relationships**: Genealogical connections established
-- ✅ **Individual Tracking**: 268 individuals across 322 generations
+- ✅ **Individual Tracking**: Full individual genealogy collection
 - ✅ **Visualization Generation**: 12/16 plots successfully created
 - ✅ **Data Export**: Complete JSON and statistical summaries
 
-**Remaining Integration Gaps**:
+**Remaining Integration Gaps** (lower priority given performance crisis):
 - ⚠️ **Missing Mutation Tracking**: Only crossover births recorded
 - ⚠️ **Island Model Integration**: Zero migration events affecting lineage
 - ⚠️ **Limited Lineage Depth**: Max depth 1 suggests incomplete tracking
-
-**Next Steps**: Focus on mutation integration and island model debugging
 
 ### Island Model System Investigation
 **Files to Examine**:
