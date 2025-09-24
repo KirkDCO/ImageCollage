@@ -33,10 +33,11 @@ class IntelligentRestartManager:
     optimal restart timing while preserving valuable genetic material.
     """
 
-    def __init__(self, config: RestartConfig, population_size: int, genome_length: int):
+    def __init__(self, config: RestartConfig, population_size: int, genome_length: int, grid_size: tuple = None):
         self.config = config
         self.population_size = population_size
         self.genome_length = genome_length
+        self.grid_size = grid_size  # Store grid_size for proper 2D individual creation
 
         # State tracking
         self.stagnation_counter = 0
@@ -280,7 +281,12 @@ class IntelligentRestartManager:
         # Strategy 1: Random individuals (30%)
         random_count = max(1, int(count * 0.3))
         for _ in range(random_count):
-            individual = np.random.randint(0, num_source_images, size=self.genome_length)
+            if self.grid_size is not None:
+                grid_width, grid_height = self.grid_size  # grid_size is (width, height)
+                individual = np.random.randint(0, num_source_images, size=(grid_height, grid_width))
+            else:
+                # Fallback to 1D if grid_size not available (shouldn't happen in practice)
+                individual = np.random.randint(0, num_source_images, size=self.genome_length)
             new_individuals.append(individual)
 
         # Strategy 2: Mutated elite variants (40%)
@@ -296,7 +302,12 @@ class IntelligentRestartManager:
                 new_individuals.append(base)
             else:
                 # Fallback to random
-                individual = np.random.randint(0, num_source_images, size=self.genome_length)
+                if self.grid_size is not None:
+                    grid_width, grid_height = self.grid_size  # grid_size is (width, height)
+                    individual = np.random.randint(0, num_source_images, size=(grid_height, grid_width))
+                else:
+                    # Fallback to 1D if grid_size not available (shouldn't happen in practice)
+                    individual = np.random.randint(0, num_source_images, size=self.genome_length)
                 new_individuals.append(individual)
 
         # Strategy 3: Diverse sampling (30%)
@@ -326,7 +337,14 @@ class IntelligentRestartManager:
 
             # Generate individuals avoiding common elite patterns
             for _ in range(count):
-                individual = np.zeros(self.genome_length, dtype=int)
+                if self.grid_size is not None:
+                    grid_width, grid_height = self.grid_size  # grid_size is (width, height)
+                    individual = np.zeros((grid_height, grid_width), dtype=int)
+                    # Flatten for processing, then reshape back
+                    flat_individual = np.zeros(self.genome_length, dtype=int)
+                else:
+                    individual = np.zeros(self.genome_length, dtype=int)
+                    flat_individual = individual
 
                 for pos in range(self.genome_length):
                     elite_frequencies = position_frequencies[pos]
@@ -346,15 +364,25 @@ class IntelligentRestartManager:
                     total_weight = sum(weights)
                     if total_weight > 0:
                         weights = [w / total_weight for w in weights]
-                        individual[pos] = np.random.choice(values, p=weights)
+                        flat_individual[pos] = np.random.choice(values, p=weights)
                     else:
-                        individual[pos] = random.randint(0, num_source_images - 1)
+                        flat_individual[pos] = random.randint(0, num_source_images - 1)
+
+                # Reshape to proper 2D grid if needed
+                if self.grid_size is not None:
+                    grid_width, grid_height = self.grid_size
+                    individual = flat_individual.reshape((grid_height, grid_width))
 
                 new_individuals.append(individual)
         else:
             # No elite reference, generate random diverse individuals
             for _ in range(count):
-                individual = np.random.randint(0, num_source_images, size=self.genome_length)
+                if self.grid_size is not None:
+                    grid_width, grid_height = self.grid_size  # grid_size is (width, height)
+                    individual = np.random.randint(0, num_source_images, size=(grid_height, grid_width))
+                else:
+                    # Fallback to 1D if grid_size not available (shouldn't happen in practice)
+                    individual = np.random.randint(0, num_source_images, size=self.genome_length)
                 new_individuals.append(individual)
 
         return new_individuals

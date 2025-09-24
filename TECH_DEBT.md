@@ -638,6 +638,66 @@ if len(population) > 50:
 
 **Debugging Priority**: 🚨 **MEDIUM** - Restart mechanisms may be non-functional
 
+### 15. IntelligentRestartManager Integration Failure (2025-09-24)
+**Location**: `genetic/intelligent_restart.py` vs `genetic/ga_engine.py`
+**Discovered**: Analysis of generation 95 coordinate system failure investigation
+
+**Critical Integration Issue**:
+- **Advanced System Orphaned**: Complete IntelligentRestartManager system exists but unconnected
+- **Configuration Disconnect**: CLI/config support `enable_intelligent_restart: true` but GA engine ignores it
+- **Dual Restart Systems**: Basic restart (working) and intelligent restart (orphaned) coexist
+- **User Confusion**: Users can enable intelligent restart but get basic restart instead
+- **Hidden Coordinate Bug**: IntelligentRestartManager had coordinate system bug (fixed 2025-09-24 preemptively)
+
+**Evidence**:
+- **Config declares it**: `enable_intelligent_restart: True` in failed run (output_20250923_210635/config.yaml)
+- **CLI supports it**: `--enable-intelligent-restart` flag exists and processes properly
+- **Settings handle it**: Configuration system loads and saves intelligent restart settings
+- **GA engine ignores it**: Zero references to IntelligentRestartManager in ga_engine.py
+- **Works independently**: IntelligentRestartManager fully functional in isolation
+
+**System Comparison**:
+```python
+# Basic Restart (Currently Active in GA Engine)
+restart_threshold = self.config.genetic_params.restart_threshold  # = 40
+restart_ratio = self.config.genetic_params.restart_ratio          # = 0.4
+if self.stagnation_counter > restart_threshold:
+    new_population = self._population_restart(new_population, restart_ratio)
+
+# IntelligentRestartManager (Orphaned but Advanced)
+# - Multi-criteria restart (diversity + stagnation + convergence rate)
+# - Adaptive thresholds based on restart success history
+# - Elite-avoiding diverse generation strategies
+# - Comprehensive restart statistics and performance tracking
+```
+
+**Integration Gap Analysis**:
+- **Missing import**: `from genetic.intelligent_restart import IntelligentRestartManager`
+- **Missing initialization**: GA engine never instantiates IntelligentRestartManager
+- **Missing condition check**: GA engine never checks `config.enable_intelligent_restart`
+- **Missing method calls**: GA engine never calls `should_restart()` or `perform_restart()`
+- **Dual configuration**: Two separate restart parameter sets (basic vs intelligent)
+
+**User Impact**:
+- **Silent failure**: Users enable intelligent restart but get basic restart without warning
+- **Feature unavailable**: Advanced restart strategies completely inaccessible
+- **Configuration confusion**: Two sets of restart parameters with unclear precedence
+- **Documentation mismatch**: CLAUDE.md describes features that don't work
+
+**Root Cause**: Incremental development left advanced system unintegrated
+
+**Resolution Options**:
+1. **Integrate IntelligentRestartManager** - Replace basic restart when intelligent enabled
+2. **Remove intelligent restart** - Clean up orphaned code and configuration
+3. **Document limitation** - Clarify that intelligent restart is not implemented
+
+**Files Requiring Changes** (if integrating):
+- `genetic/ga_engine.py` - Add IntelligentRestartManager integration
+- `genetic/ga_engine.py` - Add configuration check for `enable_intelligent_restart`
+- `config/settings.py` - Clarify parameter precedence documentation
+
+**Debugging Priority**: 🚨 **MEDIUM** - Advanced feature completely unavailable, user experience issue
+
 ## Priority Assessment
 
 **📋 Implementation Guidance**: See DEBUGGING.md for step-by-step implementation procedures for all issues listed below. DEBUGGING.md phases correspond to these priority levels. **DEBUGGING.md has been updated (2025-09-23) with comprehensive error prevention strategies and validation patterns derived from the analysis of completed issues.**
@@ -785,6 +845,7 @@ if len(population) > 50:
 - Aspect ratio and grid orientation discrepancy
 
 **⚠️ MEDIUM PRIORITY** (Technical debt and configuration issues):
+- **Intelligent Restart System Integration Issue** (orphaned advanced system - from 2025-09-24 analysis)
 - Dashboard alert system threshold calibration (98% false positive rate)
 - Remove hardcoded getattr fallbacks (confusion factor)
 - Consolidate diversity calculation paths (maintenance burden)

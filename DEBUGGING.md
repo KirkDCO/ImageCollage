@@ -2583,6 +2583,103 @@ target_tile = safe_array_access(self.target_tiles_gpu[device_id], i, j, f"GPU ev
 
 **Status**: 🟢 **FULLY IMPLEMENTED** - Comprehensive error prevention strategies active across all development documentation and templates.
 
+### **🔧 IntelligentRestartManager Integration Issue** (2025-09-24)
+**Status**: **ORPHANED ADVANCED SYSTEM** - Feature exists but unconnected
+**Priority**: 🚨 **MEDIUM** - Advanced feature completely unavailable
+**Estimated Time**: 3-4 hours integration work
+
+#### **Problem Analysis** (30 minutes)
+**Integration Gap Discovered**: Complete advanced restart system exists but GA engine never uses it
+
+**Evidence of Disconnect**:
+```bash
+# Configuration properly enabled
+grep "enable_intelligent_restart" output_20250923_210635/config.yaml
+# Result: enable_intelligent_restart: True
+
+# CLI flag supported
+grep "enable-intelligent-restart" image_collage/cli/main.py
+# Result: Flag exists and processes correctly
+
+# GA engine completely ignores it
+grep "intelligent\|IntelligentRestart" image_collage/genetic/ga_engine.py
+# Result: No matches found - completely unconnected
+```
+
+**Impact**: Users enable intelligent restart but silently get basic restart instead
+
+#### **Step 1: Verify System Components** (45 minutes)
+
+**Check IntelligentRestartManager completeness**:
+```bash
+# Verify advanced system is fully implemented
+grep -A 10 -B 5 "class IntelligentRestartManager" image_collage/genetic/intelligent_restart.py
+grep "def.*restart" image_collage/genetic/intelligent_restart.py
+grep "should_restart\|perform_restart" image_collage/genetic/intelligent_restart.py
+
+# Check coordinate system bug fix (2025-09-24)
+grep -A 5 "grid_width, grid_height = self.grid_size" image_collage/genetic/intelligent_restart.py
+echo "=== Should show proper (height, width) array creation ==="
+```
+
+#### **Step 2: Integration Implementation** (2-3 hours)
+
+**Required GA engine changes**:
+```python
+# Add imports to ga_engine.py
+from genetic.intelligent_restart import IntelligentRestartManager, RestartConfig
+
+# Add initialization in __init__ method
+self.intelligent_restart_manager = None
+if self.config.enable_intelligent_restart:
+    restart_config = RestartConfig(
+        diversity_threshold=getattr(self.config, 'restart_diversity_threshold', 0.1),
+        stagnation_threshold=getattr(self.config, 'restart_stagnation_threshold', 50),
+        elite_preservation_ratio=getattr(self.config, 'restart_elite_preservation', 0.2)
+    )
+    self.intelligent_restart_manager = IntelligentRestartManager(
+        config=restart_config,
+        population_size=self.population_size,
+        genome_length=self.grid_size[0] * self.grid_size[1],
+        grid_size=self.grid_size  # Fixed coordinate bug 2025-09-24
+    )
+
+# Replace basic restart logic in evolve_population method
+if self.config.enable_intelligent_restart and self.intelligent_restart_manager:
+    restart_decision = self.intelligent_restart_manager.should_restart(
+        diversity_score=current_diversity,
+        current_best_fitness=best_fitness,
+        generation=self.generation
+    )
+    if restart_decision['should_restart']:
+        new_population, new_fitness_scores = self.intelligent_restart_manager.perform_restart(
+            population=new_population,
+            fitness_scores=fitness_scores,
+            generation=self.generation,
+            num_source_images=self.num_source_images
+        )
+```
+
+#### **Step 3: Testing and Validation** (60 minutes)
+```bash
+# Test intelligent restart integration
+image-collage generate target.jpg sources/ test_intelligent.png \
+  --preset demo --enable-intelligent-restart \
+  --verbose 2>&1 | tee intelligent_restart_test.log
+
+# Verify intelligent restart is actually used
+grep -i "intelligent restart" intelligent_restart_test.log
+grep -i "restart triggered" intelligent_restart_test.log
+
+# Should show advanced restart criteria instead of simple stagnation counter
+```
+
+**Expected Benefits**:
+- Multi-criteria restart decisions (diversity + stagnation + convergence)
+- Adaptive threshold adjustment based on restart success history
+- Elite-avoiding diverse individual generation strategies
+- Comprehensive restart performance statistics
+
 ---
 
 This comprehensive debugging plan provides systematic approach to restore all failed systems while preserving working functionality. Each phase builds incrementally with clear validation criteria and fallback procedures. **The lineage tracking success proves this methodology works effectively for complex system restoration.**
