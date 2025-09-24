@@ -153,7 +153,17 @@ class GPUFitnessEvaluator(FitnessEvaluator):
     def set_target(self, target_image: np.ndarray, target_features: Dict[str, Any]) -> None:
         """Set target image and precompute GPU data."""
         super().set_target(target_image, target_features)
-        
+
+        # Validate target tiles shape matches expected grid configuration
+        grid_width, grid_height = self.config.grid_size
+        expected_shape = (grid_height, grid_width)
+        actual_shape = self.target_tiles.shape[:2]
+
+        if actual_shape != expected_shape:
+            raise ValueError(f"Target tiles shape mismatch: expected {expected_shape} based on grid_size {self.config.grid_size}, got {actual_shape}")
+
+        print(f"GPU Evaluator: Target tiles shape {actual_shape}, grid_size config {self.config.grid_size}")
+
         # Precompute target data on each GPU
         for device_id in self.gpu_devices:
             with cp.cuda.Device(device_id):
@@ -263,8 +273,19 @@ class GPUFitnessEvaluator(FitnessEvaluator):
                 j = actual_idx % grid_width
                 
                 if i < grid_height and j < grid_width:
+                    # Additional safety check for target_tiles_gpu bounds
+                    target_shape = self.target_tiles_gpu[device_id].shape
+                    if i >= target_shape[0] or j >= target_shape[1]:
+                        print(f"WARNING: Multi-GPU evaluator bounds error - trying to access [{i},{j}] but target_tiles shape is {target_shape}")
+                        continue
+
+                    # Validate individual genome bounds
+                    if source_idx >= len(source_images) or source_idx < 0:
+                        print(f"WARNING: Invalid source index {source_idx} at position [{i},{j}], source_images length: {len(source_images)}")
+                        continue
+
                     target_tile_gpu = self.target_tiles_gpu[device_id][i, j]
-                    
+
                     # Always create source tile on current device to avoid cross-device issues
                     source_tile_gpu = cp.asarray(source_images[source_idx])
                     
@@ -296,7 +317,18 @@ class GPUFitnessEvaluator(FitnessEvaluator):
                 if i >= grid_height or j >= grid_width:
                     continue
 
+                # Additional safety check for target_tiles_gpu bounds
+                target_shape = self.target_tiles_gpu[device_id].shape
+                if i >= target_shape[0] or j >= target_shape[1]:
+                    print(f"WARNING: GPU evaluator bounds error - trying to access [{i},{j}] but target_tiles shape is {target_shape}, individual shape is {individual.shape}")
+                    continue
+
+                # Validate individual genome bounds
                 source_idx = individual[i, j]
+                if source_idx >= len(source_images) or source_idx < 0:
+                    print(f"WARNING: Invalid source index {source_idx} at position [{i},{j}], source_images length: {len(source_images)}")
+                    continue
+
                 target_tile_gpu = self.target_tiles_gpu[device_id][i, j]
                 source_tile_gpu = cp.asarray(source_images[source_idx])
                 

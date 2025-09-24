@@ -1950,6 +1950,108 @@ time image-collage generate target.jpg sources/ test2.png --preset demo  # no ch
 - **Diagnostics State**: All collected metrics and diversity calculations
 - **Evolution Frames**: Preview images and generation data accumulated
 
+## 🚨 **GPU EVALUATOR INDEXERROR DEBUGGING** (2025-09-23)
+
+### **Critical Crash: IndexError at Generation 150**
+
+**Symptom**: Evolution crashes after significant progress with IndexError
+```
+IndexError: Index 6 is out of bounds for axis 1 with size 6
+at gpu_evaluator.py:789: target_tile_gpu = self.target_tiles_gpu[device_id][i, j]
+```
+
+**Root Cause**: Coordinate system boundary violation in GPU evaluator
+- Grid configuration: [6, 8] = 6 columns × 8 rows
+- Trying to access column index 6 in 6-column array (valid: 0-5)
+- Error occurs after evolution reaches specific population arrangements
+
+**Debugging Commands**:
+```bash
+# 1. Check grid configuration vs actual shapes
+grep -A5 -B5 "grid_size.*\[" *.yaml
+echo "Grid config interpretation should be [width, height] = [columns, rows]"
+
+# 2. Monitor for GPU evaluator warnings in logs
+tail -f nohup.out | grep -i "WARNING.*GPU evaluator"
+tail -f nohup.out | grep -i "bounds error"
+
+# 3. Check if target tiles shape matches expected grid
+# Look for "GPU Evaluator: Target tiles shape" in output
+grep "Target tiles shape" nohup.out
+
+# 4. Test with smaller grid sizes to avoid boundary issues
+sed -i 's/grid_size: \[6, 8\]/grid_size: [4, 4]/' test_config.yaml
+```
+
+**Error Pattern Recognition**:
+- **Timing**: Usually occurs after 100+ generations (evolution has progressed significantly)
+- **Grid dependency**: More likely with non-square grids or specific aspect ratios
+- **GPU-specific**: Only affects GPU evaluator, CPU evaluator may work fine
+- **Reproducible**: Same configuration tends to fail at similar generation counts
+
+**Immediate Workarounds**:
+
+1. **Disable GPU acceleration temporarily**:
+   ```yaml
+   gpu_acceleration:
+     enable_gpu: false  # Use CPU evaluator which handles coordinates correctly
+   ```
+
+2. **Use square grids** (less prone to coordinate confusion):
+   ```yaml
+   basic_settings:
+     grid_size: [8, 8]  # Square grids have symmetric coordinate systems
+   ```
+
+3. **Reduce evolution length** (avoid reaching problematic generations):
+   ```yaml
+   genetic_algorithm:
+     max_generations: 100  # Stop before typical crash point
+   ```
+
+**Diagnostic Analysis Protocol**:
+```bash
+# 1. Extract error location and coordinates from crash
+grep -A10 -B5 "IndexError.*bounds" nohup.out
+
+# 2. Check grid configuration interpretation
+python3 -c "
+config_grid = [6, 8]  # From config
+print(f'Config grid_size: {config_grid}')
+print(f'Expected interpretation: width={config_grid[0]}, height={config_grid[1]}')
+print(f'Expected target_tiles shape: ({config_grid[1]}, {config_grid[0]}, ...)')
+print(f'Expected individual shape: ({config_grid[1]}, {config_grid[0]})')
+"
+
+# 3. Validate coordinate system consistency across evaluators
+grep -r "grid_width.*grid_height" image_collage/fitness/ -A2 -B2
+grep -r "individual\.shape" image_collage/fitness/ -A2 -B2
+```
+
+**Prevention and Validation**:
+- **Early validation**: Added target tiles shape validation in `set_target()`
+- **Runtime bounds checking**: Multiple coordinate validation layers
+- **Defensive programming**: Skip invalid tiles rather than crash
+- **Diagnostic output**: Detailed warnings help identify coordinate mismatches
+
+### **GPU Evaluator Recovery Instructions**
+
+**If crash occurs during run**:
+1. **Check last valid generation**: Look for highest generation number in logs
+2. **Examine diagnostic warnings**: Search logs for "WARNING.*GPU evaluator" messages
+3. **Switch to CPU evaluator**: Temporarily disable GPU to complete evolution
+4. **Report coordinate details**: Note grid_size, target_tiles shape, and error coordinates
+
+**Fix Verification**:
+```bash
+# Test the fix with problematic configuration
+image-collage generate target.jpg sources/ gpu_test.png \
+  --grid-size 6 8 --preset demo --gpu --verbose
+
+# Should see "GPU Evaluator: Target tiles shape" validation message
+# Should NOT crash with IndexError
+```
+
 ## 🚨 **EMERGENCY PROCEDURES**
 
 ### **If Debugging Breaks Existing Functionality**
