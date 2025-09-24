@@ -247,6 +247,13 @@ class DiagnosticsVisualizer:
             )
             ax4.text(0, -1.5, explanation, ha='center', fontsize=8, style='italic')
 
+        # Add migration lines to time-series subplots
+        if data.migration_events:
+            self._add_simple_migration_lines(ax1, data.migration_events, generations)
+            self._add_simple_migration_lines(ax2, data.migration_events, generations)
+            self._add_simple_migration_lines(ax3, data.migration_events, generations)
+            # Note: ax4 is a pie chart, so no migration lines added
+
         plt.tight_layout()
         plt.savefig(folder_path / 'genetic_operations.png', dpi=300, bbox_inches='tight')
         plt.close()
@@ -328,6 +335,13 @@ class DiagnosticsVisualizer:
             ax4.axis('off')
             ax4.set_title('Performance Summary', fontweight='bold')
 
+        # Add migration lines to time-series subplots
+        if data.migration_events:
+            self._add_simple_migration_lines(ax1, data.migration_events, generations)
+            self._add_simple_migration_lines(ax2, data.migration_events, generations)
+            self._add_simple_migration_lines(ax3, data.migration_events, generations)
+            # Note: ax4 is a summary text box, so no migration lines added
+
         plt.tight_layout()
         plt.savefig(folder_path / 'performance_metrics.png', dpi=300, bbox_inches='tight')
         plt.close()
@@ -398,6 +412,13 @@ class DiagnosticsVisualizer:
         ax4.set_ylabel('Generations Since Last Improvement')
         ax4.set_title('Stagnation Analysis', fontweight='bold')
         ax4.grid(True, alpha=0.3)
+
+        # Add migration lines to all time-series subplots
+        if data.migration_events:
+            self._add_simple_migration_lines(ax1, data.migration_events, generations)
+            self._add_simple_migration_lines(ax2, data.migration_events, generations)
+            self._add_simple_migration_lines(ax3, data.migration_events, generations)
+            self._add_simple_migration_lines(ax4, data.migration_events, generations)
 
         plt.tight_layout()
         plt.savefig(folder_path / 'population_analysis.png', dpi=300, bbox_inches='tight')
@@ -642,6 +663,11 @@ EVOLUTION SUMMARY
         axes[5].set_ylabel('Diversity Score (0-1)')
         axes[5].grid(True, alpha=0.3)
 
+        # Add migration lines to all time-series subplots
+        if data.migration_events:
+            for ax in axes:
+                self._add_simple_migration_lines(ax, data.migration_events, generations)
+
         plt.tight_layout()
         plt.savefig(folder_path / 'comprehensive_diversity.png', dpi=300, bbox_inches='tight')
         plt.close()
@@ -727,6 +753,11 @@ EVOLUTION SUMMARY
         axes[8].set_xlabel('Generation')
         axes[8].set_ylabel('Diversity Score (0-1)')
         axes[8].grid(True, alpha=0.3)
+
+        # Add migration lines to all time-series subplots
+        if data.migration_events:
+            for ax in axes:
+                self._add_simple_migration_lines(ax, data.migration_events, generations)
 
         plt.tight_layout()
         plt.savefig(folder_path / 'spatial_diversity.png', dpi=300, bbox_inches='tight')
@@ -814,6 +845,13 @@ EVOLUTION SUMMARY
                        verticalalignment='top', bbox=dict(boxstyle='round,pad=0.3',
                        facecolor='lightyellow', alpha=0.8))
 
+        # Add migration lines to all time-series subplots
+        if data.migration_events:
+            self._add_simple_migration_lines(axes[0, 0], data.migration_events, generations)
+            self._add_simple_migration_lines(axes[0, 1], data.migration_events, generations)
+            self._add_simple_migration_lines(axes[1, 0], data.migration_events, generations)
+            self._add_simple_migration_lines(axes[1, 1], data.migration_events, generations)
+
         plt.tight_layout()
         plt.savefig(folder_path / 'advanced_metrics.png', dpi=300, bbox_inches='tight')
         plt.close()
@@ -880,3 +918,30 @@ EVOLUTION SUMMARY
         if migration_by_gen:
             ax.scatter([], [], color='purple', s=40, marker='*', alpha=0.8,
                       label='Migration Events', edgecolors='darkmagenta')
+
+    def _add_simple_migration_lines(self, ax, migration_events, generations):
+        """Add simple vertical lines to mark migration generations (without detailed annotations).
+
+        Args:
+            ax: The matplotlib axes to annotate
+            migration_events: List of migration event dictionaries
+            generations: List of generation numbers for bounds checking
+        """
+        if not migration_events:
+            return
+
+        # Get unique migration generations
+        migration_generations = set()
+        for event in migration_events:
+            gen = event['generation']
+            if gen in generations:  # Only mark generations that exist in the plot
+                migration_generations.add(gen)
+
+        # Add simple vertical lines for each migration generation
+        for gen in migration_generations:
+            ax.axvline(x=gen, color='purple', linestyle=':', alpha=0.6, linewidth=1.0)
+
+        # Add single legend entry if any migrations exist
+        if migration_generations:
+            ax.axvline(x=-1, color='purple', linestyle=':', alpha=0.6, linewidth=1.0,
+                      label='Migration Events')  # Invisible line for legend
