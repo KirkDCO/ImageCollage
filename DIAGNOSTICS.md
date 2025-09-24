@@ -315,5 +315,5 @@ Report issues or suggest enhancements through the project's issue tracking syste
 ---
 
 *Last updated: 2025-09-23*
-*Implementation version: 1.0.0*
-*Diagnostic system version: 2.1.0*
+*Implementation version: 0.1.0*
+*Diagnostic system version: 0.1.0*

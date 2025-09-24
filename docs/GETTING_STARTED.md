@@ -316,8 +316,8 @@ image-collage generate target.jpg sources/ diverse_result.png \
 
 **Features:**
 - **Fitness Sharing**: Prevents the AI from getting stuck in local optima
-- **Intelligent Restart**: Automatically restarts if evolution stagnates
-- **Component Tracking**: Analyzes how different fitness aspects evolve
+- **Intelligent Restart**: ⚠️ **NOT FUNCTIONAL** - Configuration supported but system uses basic restart instead
+- **Component Tracking**: ⚠️ **NOT FUNCTIONAL** - Feature exists but no visualizations are generated
 
 ### Crash Recovery System
 
@@ -331,18 +331,20 @@ image-collage generate target.jpg sources/ safe_result.png \
 image-collage resume output_20250918_143022/
 ```
 
-### Multi-Population Evolution (Island Model)
+### Multi-Population Evolution (Island Model) ⚠️ **NOT FUNCTIONAL**
+
+**Status**: Island model configuration is supported but migration system is broken - 0 migration events occur despite being enabled. See TECH_DEBT.md for analysis.
 
 ```yaml
-# example_configs/island_config.yaml
+# example_configs/island_config.yaml (PRODUCES NO MIGRATIONS)
 genetic_algorithm:
-  enable_island_model: true
+  enable_island_model: true    # ⚠️ Results in 0 migrations despite config
   island_model_num_islands: 3
   island_model_migration_interval: 15
   island_model_migration_rate: 0.2
 ```
 
-This runs 3 separate populations that occasionally exchange their best solutions.
+**Expected**: Should run 3 separate populations that exchange best solutions, but migration system is currently non-functional.
 
 ### Color Tile Generation
 
