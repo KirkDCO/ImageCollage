@@ -4,7 +4,14 @@ This document outlines potential future enhancements and improvements for the Im
 
 ## 🚀 High Priority Enhancements
 
-### 1. Advanced GPU Optimization
+### 1. IntelligentRestartManager Integration ⚠️ **CRITICAL**
+- **Problem**: Complete advanced restart system exists but is unconnected to GA engine
+- **Impact**: Users enable intelligent restart but silently get basic restart instead
+- **Status**: See TECH_DEBT.md Section 15 for analysis, DEBUGGING.md for integration guide
+- **Estimated Work**: 3-4 hours integration + testing
+- **Files**: `genetic/ga_engine.py` needs IntelligentRestartManager integration
+
+### 2. Advanced GPU Optimization
 - **Multi-GPU Load Balancing**: Implement dynamic load balancing across multiple GPUs
 - **Memory Pool Management**: Optimize GPU memory allocation for very large collages
 - **Mixed Precision Training**: Implement FP16/FP32 mixed precision for memory efficiency

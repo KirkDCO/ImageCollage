@@ -296,9 +296,13 @@ image-collage generate target.jpg sources/ output.png --no-duplicates
 
 **Solutions:**
 ```bash
-# Enable intelligent restart
+# Enable intelligent restart (⚠️ WARNING: Not functional - uses basic restart instead)
 image-collage generate target.jpg sources/ output.png \
-  --enable-restart
+  --enable-intelligent-restart
+
+# Use basic restart (this actually works)
+image-collage generate target.jpg sources/ output.png \
+  --preset advanced  # Has aggressive restart settings
 
 # Use fitness sharing
 image-collage generate target.jpg sources/ output.png \

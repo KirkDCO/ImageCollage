@@ -160,10 +160,11 @@ Evolution Loop → DiagnosticsCollector → GenerationStats
 **Purpose**: Multi-population evolution with migration
 **Features**: Inter-island migration, population isolation, diversity preservation
 
-#### IntelligentRestart
+#### IntelligentRestart ⚠️ **NOT INTEGRATED**
 **Location**: `genetic/intelligent_restart.py`
 **Purpose**: Stagnation detection and population restart
-**Features**: Automatic restart triggers, elite preservation
+**Features**: Multi-criteria restart, adaptive thresholds, elite-avoiding generation
+**Status**: ❌ **System exists but unconnected to GA engine** - See TECH_DEBT.md Section 15
 
 #### FitnessSharing
 **Location**: `genetic/fitness_sharing.py`

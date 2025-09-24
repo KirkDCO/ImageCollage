@@ -96,8 +96,11 @@ diversity_management:
   crowding_factor: 2.0               # Crowding selection factor
 
 # === INTELLIGENT RESTART SYSTEM ===
+# ⚠️  WARNING: Intelligent restart system is not currently integrated with the GA engine
+# ⚠️  Enabling this will silently fallback to basic restart system instead
+# ⚠️  See TECH_DEBT.md Section 15 for integration status and debugging info
 intelligent_restart:
-  enable_intelligent_restart: false  # Enable automatic restart
+  enable_intelligent_restart: false  # Enable automatic restart (NOT FUNCTIONAL - see warning above)
   restart_diversity_threshold: 0.1   # Diversity threshold for restart
   restart_stagnation_threshold: 30   # Stagnation threshold for restart
   restart_elite_preservation: 0.1    # Elite preservation fraction
@@ -316,18 +319,30 @@ diversity_management:
 
 ### Intelligent Restart System
 
-```yaml
-# Automatic population restart
-intelligent_restart:
-  enable_intelligent_restart: true
-  restart_diversity_threshold: 0.1  # Restart if diversity < 10%
-  restart_stagnation_threshold: 50  # Restart after 50 stagnant generations
-  restart_elite_preservation: 0.2   # Keep top 20% during restart
+**⚠️ INTEGRATION ISSUE**: The intelligent restart system is not currently connected to the GA engine. While the configuration is supported and the IntelligentRestartManager system is fully implemented, enabling intelligent restart will silently use the basic restart system instead.
 
-# Benefits:
-# - Automatic recovery from convergence
-# - Maintains exploration capability
-# - Improves long-run performance
+**Current Status**: See `TECH_DEBT.md` Section 15 for detailed analysis and `DEBUGGING.md` for integration procedures.
+
+```yaml
+# Automatic population restart (NOT CURRENTLY FUNCTIONAL - uses basic restart instead)
+intelligent_restart:
+  enable_intelligent_restart: true   # ⚠️ This flag is ignored by GA engine
+  restart_diversity_threshold: 0.1  # ⚠️ These parameters are not used
+  restart_stagnation_threshold: 50  # ⚠️ Basic restart parameters used instead
+  restart_elite_preservation: 0.2   # ⚠️ See genetic_algorithm.restart_* parameters
+
+# Benefits (when properly integrated):
+# - Multi-criteria restart decisions (diversity + stagnation + convergence)
+# - Adaptive threshold adjustment based on restart success
+# - Elite-avoiding diverse individual generation
+# - Comprehensive restart performance analysis
+```
+
+**Workaround**: Use the basic restart system which is functional:
+```yaml
+genetic_algorithm:
+  restart_threshold: 40      # Restart after 40 stagnant generations
+  restart_ratio: 0.4         # Replace 40% of population with random individuals
 ```
 
 ### Adaptive Parameters
