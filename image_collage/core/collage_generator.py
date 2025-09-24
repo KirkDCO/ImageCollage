@@ -228,6 +228,9 @@ class CollageGenerator:
                 from ..diagnostics import DiagnosticsCollector
                 diagnostics_collector = DiagnosticsCollector(self.config)
                 diagnostics_collector.start_evolution()
+
+                # Set diagnostics collector in GA engine for migration tracking
+                self.ga_engine.set_diagnostics_collector(diagnostics_collector)
             except ImportError as e:
                 print(f"Warning: Diagnostics not available: {e}")
                 diagnostics_collector = None
@@ -931,6 +934,9 @@ class CollageGenerator:
             try:
                 from ..diagnostics import DiagnosticsCollector
                 diagnostics_collector = DiagnosticsCollector(self.config)
+
+                # Set diagnostics collector in GA engine for migration tracking
+                self.ga_engine.set_diagnostics_collector(diagnostics_collector)
             except ImportError as e:
                 print(f"Warning: Diagnostics not available: {e}")
                 diagnostics_collector = None

@@ -11,13 +11,16 @@ from .island_model import IslandModelManager
 
 
 class GeneticAlgorithmEngine:
-    def __init__(self, config: CollageConfig):
+    def __init__(self, config: CollageConfig, diagnostics_collector=None):
         self.config = config
         self.population: List[np.ndarray] = []
         self.population_size = config.genetic_params.population_size
         self.num_source_images = 0
         self.grid_size = config.grid_size
         self.generation = 0
+
+        # Diagnostics collection
+        self.diagnostics_collector = diagnostics_collector
 
         # Lineage tracking
         self.lineage_tracker = None
@@ -46,6 +49,10 @@ class GeneticAlgorithmEngine:
         self.migration_interval = 20
         self.migration_rate = 0.1
         
+    def set_diagnostics_collector(self, diagnostics_collector):
+        """Set the diagnostics collector for migration event recording."""
+        self.diagnostics_collector = diagnostics_collector
+
     def update_config(self, config: CollageConfig) -> None:
         self.config = config
         self.population_size = config.genetic_params.population_size
@@ -70,6 +77,10 @@ class GeneticAlgorithmEngine:
             num_islands = getattr(self.config.genetic_params, 'island_model_num_islands', 4)
             migration_interval = getattr(self.config.genetic_params, 'island_model_migration_interval', 20)
             migration_rate = getattr(self.config.genetic_params, 'island_model_migration_rate', 0.1)
+
+            # Store migration interval for use in evolution loop
+            self.migration_interval = migration_interval
+
             self.island_model_manager = IslandModelManager(
                 self.config, num_islands=num_islands, migration_interval=migration_interval, migration_rate=migration_rate
             )
@@ -253,6 +264,27 @@ class GeneticAlgorithmEngine:
                             })
                         except Exception as e:
                             logging.warning(f"Lineage tracking failed for migration: {e}")
+
+                # Track migration events for diagnostics if available
+                if self.diagnostics_collector and migration_stats and 'migrations' in migration_stats:
+                    for migration in migration_stats['migrations']:
+                        try:
+                            # Get migrant fitness for diagnostics
+                            migrant_fitness = migration.get('fitness', 0.0)
+                            source_island = migration.get('source', -1)
+                            target_island = migration.get('target', -1)
+                            num_migrants = migration.get('migrants', 1)
+
+                            # Record migration event in diagnostics collector
+                            self.diagnostics_collector.record_migration_event(
+                                generation=self.generation,
+                                source_island=source_island,
+                                target_island=target_island,
+                                migrant_fitness=migrant_fitness,
+                                num_migrants=num_migrants
+                            )
+                        except Exception as e:
+                            logging.warning(f"Diagnostics migration tracking failed: {e}")
 
                 # Get updated population after migration
                 new_population = self.island_model_manager.get_total_population()[:self.population_size]
