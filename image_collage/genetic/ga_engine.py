@@ -4,6 +4,14 @@ from typing import List, Tuple, Optional, Dict, Any
 import logging
 from collections import defaultdict
 
+# Import coordinate validation utilities
+from ..utils.coordinate_validation import (
+    validate_grid_coordinates,
+    validate_individual_shape,
+    validate_array_compatibility,
+    log_coordinate_interpretation
+)
+
 from ..config.settings import CollageConfig
 from .comprehensive_diversity import ComprehensiveDiversityManager, DiversityMetrics
 from .spatial_diversity import SpatialDiversityManager
@@ -63,8 +71,10 @@ class GeneticAlgorithmEngine:
         self.population = []
         self.generation = 0
 
-        grid_width, grid_height = self.grid_size
-        total_tiles = grid_width * grid_height
+        # Use coordinate validation utilities for consistent extraction
+        width, height = validate_grid_coordinates(self.grid_size, "GeneticAlgorithmEngine.__init__")
+        grid_width, grid_height = width, height
+        total_tiles = width * height
 
         # Initialize diversity managers
         self.comprehensive_diversity_manager = ComprehensiveDiversityManager(
@@ -88,10 +98,15 @@ class GeneticAlgorithmEngine:
             # Get initial population from island model
             self.population = self.island_model_manager.get_total_population()[:self.population_size]
         else:
-            # Standard population initialization
+            # Standard population initialization with coordinate validation
+            log_coordinate_interpretation(self.grid_size, "GeneticAlgorithmEngine")
+
             for _ in range(self.population_size):
                 if self.config.allow_duplicate_tiles:
                     individual = np.random.randint(0, num_source_images, size=(grid_height, grid_width))
+
+                    # Validate individual shape
+                    validate_individual_shape(individual, self.grid_size, "GA_population_init")
                 else:
                     if num_source_images < total_tiles:
                         logging.warning(f"Not enough source images ({num_source_images}) for grid size ({total_tiles}). Using duplicates.")
@@ -303,10 +318,22 @@ class GeneticAlgorithmEngine:
         return self.population[winner_idx].copy()
     
     def _crossover(self, parent1: np.ndarray, parent2: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        # Validate parent compatibility BEFORE attempting crossover
+        try:
+            validate_array_compatibility(parent1, parent2, "crossover_parents")
+        except ValueError as e:
+            logging.error(f"Parent shape mismatch in crossover: {e}")
+            logging.error(f"Parent1 shape: {parent1.shape}, Parent2 shape: {parent2.shape}")
+            logging.error(f"Grid size config: {self.grid_size}")
+            # Return parents unchanged if shapes are incompatible
+            return parent1, parent2
+
         child1 = parent1.copy()
         child2 = parent2.copy()
 
-        grid_width, grid_height = self.grid_size  # grid_size is (width, height)
+        grid_width, grid_height = validate_grid_coordinates(
+            self.grid_size, "crossover_operation"
+        )
 
         if random.random() < 0.5:
             crossover_point1 = random.randint(0, grid_height - 1)
@@ -339,7 +366,10 @@ class GeneticAlgorithmEngine:
     
     def _mutate(self, individual: np.ndarray) -> np.ndarray:
         mutated = individual.copy()
-        grid_width, grid_height = self.grid_size  # grid_size is (width, height)
+
+        # Use coordinate validation for consistent extraction
+        width, height = validate_grid_coordinates(self.grid_size, "GeneticAlgorithmEngine._mutate")
+        grid_width, grid_height = width, height
 
         for i in range(grid_height):
             for j in range(grid_width):
@@ -669,7 +699,8 @@ class GeneticAlgorithmEngine:
         new_population = current_population[:keep_count]
 
         # Generate new random individuals
-        grid_height, grid_width = self.grid_size
+        width, height = validate_grid_coordinates(self.grid_size, "GeneticAlgorithmEngine._restart_population")
+        grid_width, grid_height = width, height
         for _ in range(restart_count):
             if self.config.allow_duplicate_tiles:
                 individual = np.random.randint(0, self.num_source_images,

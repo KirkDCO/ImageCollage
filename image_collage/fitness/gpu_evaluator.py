@@ -4,6 +4,15 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 import time
 
+# Import coordinate validation utilities
+from ..utils.coordinate_validation import (
+    validate_grid_coordinates,
+    validate_individual_shape,
+    ensure_coordinate_consistency,
+    safe_array_access,
+    log_coordinate_interpretation
+)
+
 try:
     import cupy as cp
     from cupyx.scipy.spatial.distance import cdist
@@ -154,8 +163,13 @@ class GPUFitnessEvaluator(FitnessEvaluator):
         """Set target image and precompute GPU data."""
         super().set_target(target_image, target_features)
 
+        # Validate coordinate system consistency
+        log_coordinate_interpretation(self.config.grid_size, "GPUFitnessEvaluator")
+
         # Validate target tiles shape matches expected grid configuration
-        grid_width, grid_height = self.config.grid_size
+        grid_width, grid_height = validate_grid_coordinates(
+            self.config.grid_size, "GPUFitnessEvaluator.set_target"
+        )
         expected_shape = (grid_height, grid_width)
         actual_shape = self.target_tiles.shape[:2]
 
@@ -298,13 +312,29 @@ class GPUFitnessEvaluator(FitnessEvaluator):
     def _gpu_fitness_calculation(self, device_id: int, individual: np.ndarray,
                                source_images: List[np.ndarray],
                                source_features: List[Dict[str, Any]]) -> float:
-        """Core GPU fitness calculation."""
+        """Core GPU fitness calculation with coordinate system validation."""
+
+        # Validate individual shape matches expected configuration
+        validate_individual_shape(
+            individual, self.config.grid_size,
+            f"GPUFitnessEvaluator._gpu_fitness_calculation"
+        )
+
         grid_height, grid_width = individual.shape
         total_fitness = 0.0
-        
+
+        # Validate target tiles compatibility
+        if hasattr(self, 'target_tiles_gpu') and device_id in self.target_tiles_gpu:
+            target_shape = self.target_tiles_gpu[device_id].shape[:2]
+            if target_shape != (grid_height, grid_width):
+                raise ValueError(
+                    f"Shape mismatch in GPU evaluator device {device_id}: "
+                    f"individual {individual.shape} vs target_tiles {target_shape}"
+                )
+
         # Batch process tiles for better GPU utilization
         batch_size = min(256, grid_height * grid_width)  # Adjust based on GPU memory
-        
+
         for batch_start in range(0, grid_height * grid_width, batch_size):
             batch_end = min(batch_start + batch_size, grid_height * grid_width)
             batch_fitness = 0.0

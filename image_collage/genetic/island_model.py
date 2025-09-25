@@ -13,6 +13,12 @@ import logging
 import time
 from collections import defaultdict
 
+# Import coordinate validation utilities
+from ..utils.coordinate_validation import (
+    validate_grid_coordinates,
+    log_coordinate_interpretation
+)
+
 
 @dataclass
 class Island:
@@ -73,7 +79,12 @@ class IslandModelManager:
     def initialize_islands(self, grid_size: Tuple[int, int], num_source_images: int,
                           allow_duplicates: bool = True) -> None:
         """Initialize all islands with random populations."""
-        grid_width, grid_height = grid_size
+        # Use coordinate validation for consistent extraction
+        width, height = validate_grid_coordinates(grid_size, "IslandModelManager.initialize_islands")
+        grid_width, grid_height = width, height
+
+        # Log coordinate interpretation for debugging
+        log_coordinate_interpretation(grid_size, "IslandModelManager")
 
         for island_idx, island in enumerate(self.islands):
             island.population = []

@@ -11,12 +11,23 @@ import math
 from typing import List, Dict, Tuple, Any
 from collections import defaultdict
 
+# Import coordinate validation utilities
+from ..utils.coordinate_validation import (
+    validate_grid_coordinates,
+    log_coordinate_interpretation
+)
+
 
 class SpatialDiversityManager:
     """Manages diversity preservation using spatial awareness for image collage."""
 
     def __init__(self, grid_size: Tuple[int, int], num_source_images: int):
-        self.grid_width, self.grid_height = grid_size
+        # Use coordinate validation for consistent extraction
+        width, height = validate_grid_coordinates(grid_size, "SpatialDiversityManager.__init__")
+        self.grid_width, self.grid_height = width, height
+
+        # Log coordinate interpretation for debugging
+        log_coordinate_interpretation(grid_size, "SpatialDiversityManager")
         self.num_source_images = num_source_images
         self.total_positions = self.grid_width * self.grid_height
 

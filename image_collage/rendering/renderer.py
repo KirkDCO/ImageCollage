@@ -7,6 +7,12 @@ import logging
 
 from ..config.settings import CollageConfig
 
+# Import coordinate validation utilities
+from ..utils.coordinate_validation import (
+    validate_grid_coordinates,
+    log_coordinate_interpretation
+)
+
 
 class Renderer:
     def __init__(self, config: CollageConfig):
@@ -258,7 +264,9 @@ class Renderer:
                            line_thickness: int = 1) -> np.ndarray:
         result = collage_image.copy()
         
-        grid_height, grid_width = self.grid_size
+        # Use coordinate validation for consistent extraction
+        width, height = validate_grid_coordinates(self.grid_size, "Renderer._add_grid_lines")
+        grid_width, grid_height = width, height
         tile_width, tile_height = self.tile_size
         
         for i in range(1, grid_height):

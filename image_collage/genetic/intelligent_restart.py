@@ -12,6 +12,12 @@ from typing import List, Dict, Tuple, Any, Optional
 from dataclasses import dataclass
 from collections import deque
 
+# Import coordinate validation utilities
+from ..utils.coordinate_validation import (
+    validate_grid_coordinates,
+    log_coordinate_interpretation
+)
+
 
 @dataclass
 class RestartConfig:
@@ -282,7 +288,9 @@ class IntelligentRestartManager:
         random_count = max(1, int(count * 0.3))
         for _ in range(random_count):
             if self.grid_size is not None:
-                grid_width, grid_height = self.grid_size  # grid_size is (width, height)
+                # Use coordinate validation for consistent extraction
+                width, height = validate_grid_coordinates(self.grid_size, "IntelligentRestartManager._generate_diverse_restart_population")
+                grid_width, grid_height = width, height
                 individual = np.random.randint(0, num_source_images, size=(grid_height, grid_width))
             else:
                 # Fallback to 1D if grid_size not available (shouldn't happen in practice)
@@ -303,7 +311,9 @@ class IntelligentRestartManager:
             else:
                 # Fallback to random
                 if self.grid_size is not None:
-                    grid_width, grid_height = self.grid_size  # grid_size is (width, height)
+                    # Use coordinate validation for consistent extraction
+                    width, height = validate_grid_coordinates(self.grid_size, "IntelligentRestartManager._generate_diverse_restart_population")
+                    grid_width, grid_height = width, height
                     individual = np.random.randint(0, num_source_images, size=(grid_height, grid_width))
                 else:
                     # Fallback to 1D if grid_size not available (shouldn't happen in practice)
@@ -338,7 +348,9 @@ class IntelligentRestartManager:
             # Generate individuals avoiding common elite patterns
             for _ in range(count):
                 if self.grid_size is not None:
-                    grid_width, grid_height = self.grid_size  # grid_size is (width, height)
+                    # Use coordinate validation for consistent extraction
+                    width, height = validate_grid_coordinates(self.grid_size, "IntelligentRestartManager._generate_diverse_sampling")
+                    grid_width, grid_height = width, height
                     individual = np.zeros((grid_height, grid_width), dtype=int)
                     # Flatten for processing, then reshape back
                     flat_individual = np.zeros(self.genome_length, dtype=int)
@@ -370,7 +382,9 @@ class IntelligentRestartManager:
 
                 # Reshape to proper 2D grid if needed
                 if self.grid_size is not None:
-                    grid_width, grid_height = self.grid_size
+                    # Use coordinate validation for consistent extraction
+                    width, height = validate_grid_coordinates(self.grid_size, "IntelligentRestartManager._generate_diverse_sampling")
+                    grid_width, grid_height = width, height
                     individual = flat_individual.reshape((grid_height, grid_width))
 
                 new_individuals.append(individual)
@@ -378,7 +392,9 @@ class IntelligentRestartManager:
             # No elite reference, generate random diverse individuals
             for _ in range(count):
                 if self.grid_size is not None:
-                    grid_width, grid_height = self.grid_size  # grid_size is (width, height)
+                    # Use coordinate validation for consistent extraction
+                    width, height = validate_grid_coordinates(self.grid_size, "IntelligentRestartManager._generate_diverse_sampling")
+                    grid_width, grid_height = width, height
                     individual = np.random.randint(0, num_source_images, size=(grid_height, grid_width))
                 else:
                     # Fallback to 1D if grid_size not available (shouldn't happen in practice)

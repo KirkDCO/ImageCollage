@@ -8,6 +8,12 @@ import logging
 
 from ..config.settings import CollageConfig
 
+# Import coordinate validation utilities
+from ..utils.coordinate_validation import (
+    validate_grid_coordinates,
+    log_coordinate_interpretation
+)
+
 
 class ImageProcessor:
     def __init__(self, config: CollageConfig):
@@ -71,7 +77,9 @@ class ImageProcessor:
         return result
     
     def resize_target_to_grid(self, image: np.ndarray) -> np.ndarray:
-        grid_width, grid_height = self.config.grid_size
+        # Use coordinate validation for consistent extraction
+        width, height = validate_grid_coordinates(self.config.grid_size, "ImageProcessor.resize_target_to_grid")
+        grid_width, grid_height = width, height
         tile_width, tile_height = self.tile_size
         
         target_width = grid_width * tile_width
@@ -162,7 +170,9 @@ class ImageProcessor:
         }
     
     def split_target_into_tiles(self, target_image: np.ndarray) -> np.ndarray:
-        grid_width, grid_height = self.config.grid_size
+        # Use coordinate validation for consistent extraction
+        width, height = validate_grid_coordinates(self.config.grid_size, "ImageProcessor.split_target_into_tiles")
+        grid_width, grid_height = width, height
         tile_width, tile_height = self.tile_size
         
         resized_target = self.resize_target_to_grid(target_image)
