@@ -8,8 +8,9 @@ import numpy as np
 import sys
 import os
 
-# Add project root to path
-sys.path.insert(0, '/opt/Projects/ImageCollage')
+# Add project root to path for absolute imports
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, project_root)
 
 from image_collage.utils.coordinate_validation import (
     validate_grid_coordinates,

@@ -9,8 +9,9 @@ import sys
 import os
 import logging
 
-# Add project root to path
-sys.path.insert(0, '/opt/Projects/ImageCollage')
+# Add project root to path for absolute imports
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, project_root)
 
 # Set up logging to capture coordinate validation messages
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
