@@ -2,6 +2,44 @@
 
 This document outlines potential future enhancements and improvements for the Image Collage Generator. These suggestions are organized by priority and implementation complexity.
 
+## Table of Contents
+
+1. [🚀 High Priority Enhancements](#-high-priority-enhancements)
+   - [IntelligentRestartManager Integration](#1-intelligentrestartmanager-integration-️-critical)
+   - [Advanced GPU Optimization](#2-advanced-gpu-optimization)
+   - [Interactive Web Interface](#2-interactive-web-interface)
+   - [Advanced Image Processing](#3-advanced-image-processing)
+
+2. [🎯 Medium Priority Features](#-medium-priority-features)
+   - [Enhanced AI Integration](#4-enhanced-ai-integration)
+   - [Advanced Evolutionary Algorithms](#5-advanced-evolutionary-algorithms)
+   - [Extended Analytics](#6-extended-analytics)
+
+3. [🔧 Technical Improvements](#-technical-improvements)
+   - [Performance Optimizations](#7-performance-optimizations)
+   - [Enhanced User Experience](#8-enhanced-user-experience)
+   - [Advanced Visualization](#9-advanced-visualization)
+
+4. [🎨 Creative Features](#-creative-features)
+   - [Artistic Enhancements](#10-artistic-enhancements)
+   - [Content-Aware Features](#11-content-aware-features)
+   - [Social and Collaboration Features](#12-social-and-collaboration-features)
+
+5. [🧪 Research and Experimental](#-research-and-experimental)
+   - [Novel Algorithms](#13-novel-algorithms)
+   - [Advanced Diversity Techniques](#14-advanced-diversity-techniques)
+   - [Emerging Technologies](#15-emerging-technologies)
+
+6. [🛠️ Infrastructure and Maintenance](#️-infrastructure-and-maintenance)
+   - [Software Engineering](#16-software-engineering)
+   - [Compatibility and Portability](#17-compatibility-and-portability)
+   - [Data Management](#18-data-management)
+
+7. [💡 Implementation Notes](#-implementation-notes)
+8. [🎯 Immediate Next Steps](#-immediate-next-steps)
+9. [📝 Contributing](#-contributing)
+10. [📊 Feature Tracking](#-feature-tracking)
+
 ## 🚀 High Priority Enhancements
 
 ### 1. IntelligentRestartManager Integration ⚠️ **CRITICAL**
@@ -62,6 +100,12 @@ This document outlines potential future enhancements and improvements for the Im
 - **Smart Defaults**: AI-powered parameter recommendations
 - **Batch Processing**: Process multiple targets simultaneously
 - **Template System**: Predefined templates for common use cases
+- **Tile Size Analysis**: Enhance analyze command with intelligent tile size recommendations
+  - Analyze source image resolutions and recommend optimal tile sizes
+  - Consider memory constraints and performance impact
+  - Provide quality vs. performance trade-off guidance
+  - Account for high-resolution collections (e.g., Galapagos 2025: 347 images at 4080x3072)
+  - Suggest larger tiles (48x48-64x64) for high-res sources to preserve detail
 
 ### 9. Advanced Visualization
 - **3D Evolutionary Landscapes**: 3D visualization of fitness landscapes
