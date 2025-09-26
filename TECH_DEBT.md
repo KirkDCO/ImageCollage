@@ -1241,6 +1241,80 @@ if (save_checkpoints or self.config.enable_checkpoints) and CHECKPOINTS_AVAILABL
 
 **Debugging Priority**: 🚨 **CRITICAL** - Core crash recovery feature non-functional via configuration
 
+### ⚠️ Configuration Architecture Inconsistency (DISCOVERED 2025-09-25)
+**Location**: `image_collage/cli/main.py` vs `image_collage/core/collage_generator.py`
+**Discovered**: During checkpoint system bug investigation
+**Root Cause**: Dual configuration mechanism creates architectural inconsistency
+**Impact**: Similar bugs likely exist for other parameters
+
+**🔍 ARCHITECTURAL FLAW IDENTIFIED**:
+**Dual Configuration Pattern - CLI Override vs Function Parameters**:
+
+```python
+# Pattern 1: CLI Properly Updates Config (CORRECT)
+if save_checkpoints:
+    collage_config.enable_checkpoints = True    # ✅ Updates config object
+
+# Pattern 2: Function Call Bypasses Config (WRONG)
+result = generator.generate(
+    save_checkpoints=save_checkpoints,          # ❌ Passes CLI flag directly
+    checkpoint_interval=config.checkpoint_interval if save_checkpoints else 10  # ❌ Conditional logic
+)
+
+# Pattern 3: Implementation Ignores Config (BUG)
+if save_checkpoints and CHECKPOINTS_AVAILABLE and output_folder:  # ❌ Only checks CLI parameter
+```
+
+**Evidence Analysis (2025-09-25)**:
+- **CLI Processing**: Lines 154-156 properly update `collage_config.enable_checkpoints = True`
+- **Function Call**: Line 265 passes `save_checkpoints=save_checkpoints` (CLI parameter directly)
+- **Implementation**: `collage_generator.py:281` only checks `save_checkpoints`, ignores `self.config.enable_checkpoints`
+- **Conditional Logic**: Line 266 `checkpoint_interval=collage_config.checkpoint_interval if save_checkpoints else 10`
+
+**Architectural Problems**:
+- **Split Responsibility**: Configuration handled in two separate, incompatible ways
+- **Precedence Confusion**: Unclear which takes priority - CLI flags or config settings
+- **Maintenance Burden**: Changes require updates in multiple locations
+- **Bug Proliferation**: Pattern creates systematic configuration bugs
+
+**Similar Issues Likely Exist For**:
+- `gpu` CLI flag vs `config.gpu_config.enable_gpu`
+- `processes` CLI flag vs `config.num_processes`
+- `quality` CLI flag vs `config.output_quality`
+- Any parameter with both CLI option and config setting
+
+**Correct Architecture Pattern**:
+```python
+# CLI should ONLY modify config (no direct parameters to generator)
+if save_checkpoints:
+    collage_config.enable_checkpoints = True
+    collage_config.checkpoint_dir = "checkpoints"
+
+# Generator should ONLY use config (no CLI parameters)
+result = generator.generate(
+    callback=callback,
+    diagnostics_folder=diagnostics_path,
+    output_folder=output_folder
+    # NO CLI parameters passed through!
+)
+
+# Implementation should ONLY check config
+if self.config.enable_checkpoints and CHECKPOINTS_AVAILABLE and output_folder:
+```
+
+**Required Architectural Fix**:
+1. **Remove all CLI parameters from `CollageGenerator.generate()`**
+2. **Ensure CLI processing updates config object completely**
+3. **Update implementation to use only `self.config` values**
+4. **Eliminate all conditional config access (`if cli_flag then use config.value`)**
+
+**Files Requiring Architectural Changes**:
+- `cli/main.py` - Remove CLI parameter passing to generator
+- `core/collage_generator.py` - Remove CLI parameters, use only config
+- All other locations with dual configuration patterns
+
+**Debugging Priority**: 🚨 **ARCHITECTURAL** - Root cause of multiple configuration bugs
+
 ## Documentation Updates Needed
 
 After cleanup:
