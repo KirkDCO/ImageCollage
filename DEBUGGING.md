@@ -157,6 +157,7 @@ The system uses a **genetic algorithm** to evolve optimal arrangements of source
 | **LRU Cache** | 3x speedup after warmup (62s→20s/gen) | Flat 62s/gen for 490 generations | ❌ **Broken** |
 | **Component Tracking** | 3 component visualizations | 0 component visualizations | ❌ **Broken** |
 | **Configuration** | Use "lineage_comprehensive" directory | Creates "lineage/" directory | 🐛 **Buggy** |
+| **Checkpoint System** | Save checkpoints every 25 generations | No checkpoints saved despite config | ❌ **Broken** |
 | **Alerts** | Meaningful warnings | 98% false positive rate | 🐛 **Miscalibrated** |
 | **Image Geometry** | 30×40 grid → 960×1280 portrait output | 1280×960 landscape output | 🐛 **Wrong orientation** |
 
@@ -402,6 +403,68 @@ chmod +x compare_*.sh
 ## 🚀 **PHASE 1: CRITICAL SYSTEM FAILURES** (8-12 hours)
 
 *Addresses TECH_DEBT.md CRITICAL PRIORITY items requiring immediate attention*
+
+### **1.0 🚨 Fix Checkpoint System Configuration Bug** (CRITICAL - 30 minutes estimated)
+**Confidence**: 95% - Root cause identified with precise fix location
+**Evidence**: Config setting ignored by implementation, precise code location identified
+**Priority**: 🚨 CRITICAL - Long-running simulations lose crash recovery capability
+
+**💥 CURRENT IMPACT (2025-09-25)**:
+- **Active Simulation**: output_20250924_210948 running 275+ generations (6.5+ hours) with NO checkpoints
+- **Configuration Set**: `enable_checkpoints: true` in both comprehensive_testing.yaml and config.yaml
+- **Runtime Failure**: No checkpoint directory created despite explicit configuration
+- **Recovery Lost**: Cannot resume from crash after 6.5+ hours of evolution
+
+**🔍 ROOT CAUSE CONFIRMED**:
+**Configuration vs Implementation Mismatch** in `image_collage/core/collage_generator.py:281`:
+```python
+# Current code (INCOMPLETE):
+if save_checkpoints and CHECKPOINTS_AVAILABLE and output_folder:
+
+# Required fix (COMPLETE):
+if (save_checkpoints or self.config.enable_checkpoints) and CHECKPOINTS_AVAILABLE and output_folder:
+```
+
+#### **Step 1: Implement Configuration Check** (15 minutes)
+```python
+# File: image_collage/core/collage_generator.py
+# Line: 281
+# Change checkpoint activation condition
+
+# Before:
+if save_checkpoints and CHECKPOINTS_AVAILABLE and output_folder:
+    try:
+        checkpoint_dir = Path(output_folder) / "checkpoints"
+
+# After:
+if (save_checkpoints or self.config.enable_checkpoints) and CHECKPOINTS_AVAILABLE and output_folder:
+    try:
+        # Use configured checkpoint directory if specified
+        if self.config.checkpoint_dir and save_checkpoints:
+            checkpoint_dir = Path(output_folder) / self.config.checkpoint_dir
+        else:
+            checkpoint_dir = Path(output_folder) / "checkpoints"
+```
+
+#### **Step 2: Use Configuration Parameters** (10 minutes)
+```python
+# Use config settings when available
+checkpoint_manager = CheckpointManager(
+    str(checkpoint_dir),
+    save_interval=self.config.checkpoint_interval if self.config.checkpoint_interval else checkpoint_interval,
+    max_checkpoints=self.config.max_checkpoints
+)
+```
+
+#### **Step 3: Test Configuration-Based Checkpoints** (5 minutes)
+```bash
+# Test with configuration file
+image-collage generate target.jpg sources/ test.png --config comprehensive_testing.yaml --preset demo --generations 50
+```
+
+**Expected Result**: Checkpoint directory created and checkpoints saved every 25 generations
+
+**Fix Implementation Status**: 🚨 **READY FOR IMPLEMENTATION - HIGH PRIORITY**
 
 ### **1.1 ✅ Fix Lineage Tracking Integration** (COMPLETED 2025-09-22 - 3 hours actual)
 **Confidence**: 95% - Root cause confirmed through detailed investigation ✅ **VERIFIED**

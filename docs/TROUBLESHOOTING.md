@@ -244,6 +244,30 @@ watch nvidia-smi
 
 ### Configuration Issues
 
+#### 🚨 Issue: Checkpoints not saved despite configuration
+**Symptoms (2025-09-25):**
+- `enable_checkpoints: true` in configuration file
+- No checkpoint directory created in output folder
+- Long simulations cannot resume from crashes
+
+**Cause:** Implementation bug in `core/collage_generator.py:281`
+```python
+# Current broken code - ignores configuration
+if save_checkpoints and CHECKPOINTS_AVAILABLE and output_folder:
+
+# Required fix - respects configuration
+if (save_checkpoints or self.config.enable_checkpoints) and CHECKPOINTS_AVAILABLE and output_folder:
+```
+
+**Workaround (until fixed):**
+```bash
+# Use CLI flag instead of configuration file
+image-collage generate target.jpg sources/ output.png \
+  --save-checkpoints --preset balanced
+```
+
+**Permanent Solution:** Code fix needed in `core/collage_generator.py`
+
 #### Issue: "Invalid configuration file"
 **Symptoms:**
 - YAML parsing errors

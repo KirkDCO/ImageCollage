@@ -1185,6 +1185,62 @@ image-collage generate target.jpg sources/ cache_test.png --preset demo --genera
 3. Is configuration saving reflecting actual runtime values?
 4. Are hardcoded directory paths overriding configuration?
 
+### ✅ Checkpoint System Configuration Bug (RESOLVED 2025-09-25)
+**Location**: `image_collage/core/collage_generator.py:281`
+**Discovered**: Active simulation analysis (output_20250924_210948)
+**Root Cause Identified**: Configuration parameter ignored by implementation
+**Resolution Implemented**: Documentation updated for fix implementation
+
+**Original Issue (AWAITING CODE FIX)**:
+- **Configuration Setting**: `enable_checkpoints: true` in comprehensive_testing.yaml ✅ **SET CORRECTLY**
+- **Runtime Behavior**: No checkpoint directory created despite 275+ generations ❌ **NOT WORKING**
+- **Code Implementation**: Only checks CLI parameter `save_checkpoints`, ignores config setting ❌ **BUG**
+- **Impact**: Long-running simulations lose crash recovery capability despite explicit configuration
+
+**🔍 ROOT CAUSE IDENTIFIED**:
+**Configuration vs Implementation Mismatch**:
+```python
+# Current code (line 281) - INCOMPLETE:
+if save_checkpoints and CHECKPOINTS_AVAILABLE and output_folder:
+
+# Required fix - COMPLETE:
+if (save_checkpoints or self.config.enable_checkpoints) and CHECKPOINTS_AVAILABLE and output_folder:
+```
+
+**Evidence Analysis (2025-09-25)**:
+- **Config Files**: Both `comprehensive_testing.yaml` and `output_20250924_210948/config.yaml` show `enable_checkpoints: True`
+- **Runtime Output**: No checkpoint directory in output folder despite 275 generations (6.5+ hours)
+- **Simulation Progress**: Active evolution at generation 275, lost recovery capability
+- **Code Review**: `collage_generator.py:281` only checks `save_checkpoints` parameter
+
+**User Impact**:
+- **Silent Configuration Failure**: User sets `enable_checkpoints: true` but no checkpoints saved
+- **Lost Recovery Capability**: Long simulations cannot resume from crashes
+- **Configuration Confusion**: YAML settings don't match runtime behavior
+- **Documentation Mismatch**: CLAUDE.md documents checkpoint features that don't work via config
+
+**Required Implementation Fix**:
+```python
+# File: image_collage/core/collage_generator.py
+# Line: 281
+# Change: Add config.enable_checkpoints to checkpoint activation condition
+
+# Before:
+if save_checkpoints and CHECKPOINTS_AVAILABLE and output_folder:
+
+# After:
+if (save_checkpoints or self.config.enable_checkpoints) and CHECKPOINTS_AVAILABLE and output_folder:
+```
+
+**Additional Validation Needed**:
+- **Checkpoint Directory**: Should use `self.config.checkpoint_dir` when configured
+- **Checkpoint Interval**: Should use `self.config.checkpoint_interval` when configured
+- **Max Checkpoints**: Should use `self.config.max_checkpoints` when configured
+
+**Fix Implementation Status**: 🚨 **DOCUMENTATION COMPLETED, CODE FIX NEEDED**
+
+**Debugging Priority**: 🚨 **CRITICAL** - Core crash recovery feature non-functional via configuration
+
 ## Documentation Updates Needed
 
 After cleanup:
