@@ -7,7 +7,7 @@
 
 # === BASIC SETTINGS ===
 basic_settings:
-  grid_size: [6, 8] #[60, 80]               # 4800 tiles - substantial complexity, preserves 4:3 aspect ratio
+  grid_size: [30, 40] #[60, 80]               # 4800 tiles - substantial complexity, preserves 4:3 aspect ratio
   tile_size: [32, 32]               # Standard tile size for good detail
   allow_duplicate_tiles: false      # NO duplicates - forces diverse solutions and lineage complexity
   random_seed: 12345                # Different seed from showcase for independent validation
@@ -19,8 +19,8 @@ basic_settings:
 # === GENETIC ALGORITHM PARAMETERS ===
 genetic_algorithm:
   # Core GA Parameters - optimized for comprehensive overnight testing
-  population_size: 21              # Larger population for richer lineage trees
-  max_generations: 250              # Overnight run - plenty of generations for thorough testing
+  population_size: 160              # Larger population for richer lineage trees
+  max_generations: 1000              # Overnight run - plenty of generations for thorough testing
   crossover_rate: 0.75               # Moderate crossover for balanced birth method distribution
   mutation_rate: 0.15                # Higher mutation for diversity and lineage complexity
   elitism_rate: 0.10                 # Moderate elitism for survival analysis
@@ -46,8 +46,8 @@ genetic_algorithm:
 
   # Multi-Population Island Model - ENABLE for extensive migration analysis
   enable_island_model: true             # Test island model evolution extensively
-  island_model_num_islands: 3           # More islands for complex migration patterns
-  island_model_migration_interval: 2   # Migrate every 20 generations for rich patterns
+  island_model_num_islands: 4           # More islands for complex migration patterns
+  island_model_migration_interval: 50   # Migrate every 20 generations for rich patterns
   island_model_migration_rate: 0.10     # Moderate migration for balanced populations
 
 # === FITNESS EVALUATION ===
@@ -112,7 +112,7 @@ intelligent_restart:
 diversity_dashboard:
   # Real-time diversity monitoring - comprehensive tracking
   enable_diversity_dashboard: true   # ENABLE real-time dashboard
-  dashboard_update_interval: 5      # Update every 10 generations for detailed tracking
+  dashboard_update_interval: 25      # Update every 10 generations for detailed tracking
   dashboard_alert_critical_diversity: 0.08   # Lower critical threshold for testing alerts
   dashboard_alert_low_diversity: 0.15        # Lower warning threshold for more alerts
 
