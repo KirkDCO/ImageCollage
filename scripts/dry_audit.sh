@@ -90,9 +90,23 @@ else
     echo "⚠️  utils/__init__.py not found."
 fi
 
-# 6. Performance check
+# 6. Coordinate system validation check
 echo ""
-echo "6️⃣ Performance check..."
+echo "6️⃣ Checking for coordinate system violations..."
+echo "-----------------------------------------------"
+forbidden_extraction=$(grep -r "grid_width.*grid_height.*=.*grid_size\|width.*height.*=.*grid_size" --include="*.py" . | grep -v validate_grid_coordinates)
+if [ -n "$forbidden_extraction" ]; then
+    echo "⚠️  FORBIDDEN coordinate system patterns found:"
+    echo "$forbidden_extraction"
+    echo ""
+    echo "   💡 Use validate_grid_coordinates() instead."
+else
+    echo "✅ Coordinate system standards followed."
+fi
+
+# 7. Performance check
+echo ""
+echo "7️⃣ Performance check..."
 echo "-----------------------"
 large_loops=$(grep -r "for.*range.*len.*population" --include="*.py" . | grep -v utils/diversity_metrics.py | wc -l)
 if [ $large_loops -gt 0 ]; then
@@ -112,6 +126,7 @@ if [ -n "$duplicates" ]; then ((issues++)); fi
 if [ -n "$o_n_squared" ]; then ((issues++)); fi
 if [ -n "$outside_utils" ]; then ((issues++)); fi
 if [ $hamming_count -gt 2 ] || [ $entropy_count -gt 2 ] || [ $diversity_count -gt 3 ]; then ((issues++)); fi
+if [ -n "$forbidden_extraction" ]; then ((issues++)); fi
 if [ $large_loops -gt 0 ]; then ((issues++)); fi
 
 if [ $issues -eq 0 ]; then

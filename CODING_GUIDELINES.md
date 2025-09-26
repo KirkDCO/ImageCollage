@@ -4,6 +4,34 @@
 
 **⚡ Critical**: These guidelines MUST be followed by all contributors and AI assistants working on ANY project.
 
+## Table of Contents
+1. [🚀 Session Startup Checklist](#-session-startup-checklist)
+2. [🏗️ Core Architecture Principles](#️-core-architecture-principles)
+   - [DRY (Don't Repeat Yourself)](#1-dry-dont-repeat-yourself---mandatory)
+   - [Utility-First Development](#2-utility-first-development)
+   - [Performance Awareness](#3-performance-awareness)
+   - [Error Handling and Robustness](#4-error-handling-and-robustness)
+   - [Testing and Documentation](#5-testing-and-documentation)
+   - [Security and Safety](#6-security-and-safety)
+   - [Maintainability](#7-maintainability)
+3. [🆕 New Project Setup](#-new-project-setup)
+4. [📁 Required Project Structure](#-required-project-structure)
+5. [🚫 Anti-Patterns - NEVER DO THESE](#-anti-patterns---never-do-these)
+6. [✅ Mandatory Development Workflow](#-mandatory-development-workflow)
+7. [🎯 Language-Specific Guidelines](#-language-specific-guidelines)
+8. [🔗 System Integration Guidelines](#-system-integration-guidelines)
+   - [Critical Error Prevention Patterns](#️-critical-error-prevention-patterns)
+   - [Coordinate System Standardization](#coordinate-system-standardization---mandatory-conventions)
+   - [Interface Boundary Validation](#interface-boundary-validation)
+   - [Configuration Propagation Validation](#configuration-propagation-validation)
+   - [Integration Discovery Protocol](#interface-discovery-protocol---mandatory)
+   - [Integration Testing](#mandatory-integration-testing)
+9. [📋 Session-to-Session Continuity](#-session-to-session-continuity)
+10. [🔧 Enforcement Tools](#-enforcement-tools)
+11. [📚 Documentation Standards](#-documentation-standards)
+12. [🚀 Quick Reference](#-quick-reference)
+13. [📈 Success Metrics](#-success-metrics)
+
 ---
 
 ## **🚀 Session Startup Checklist**
@@ -239,23 +267,119 @@ def calculate_metric(data: List[np.ndarray], threshold: float = 0.5) -> float:
 ### **⚠️ Critical Error Prevention Patterns**
 **Based on analysis of resolved technical debt, these patterns prevent 75% of integration boundary failures:**
 
-#### **Coordinate System Standardization**
-- **MANDATORY**: Document coordinate conventions in every component
-- **Rule**: Always use `(width, height)` order throughout entire codebase
-- **Validation**: Add assertions to verify grid dimension interpretation
+#### **Coordinate System Standardization - MANDATORY CONVENTIONS**
+
+**Based on COORDINATE_SYSTEM_STANDARD.md analysis - this prevents 40% of integration errors**
+
+##### **1. Configuration Level**
+- **MANDATORY**: `grid_size` always represents `(width, height)` in all config objects
+- **Rule**: Width first, height second throughout entire codebase
 
 ```python
-# ✅ REQUIRED: Coordinate system validation
-def validate_grid_coordinates(grid_size: tuple, context: str = ""):
-    """Ensure consistent (width, height) interpretation."""
-    assert len(grid_size) == 2, f"Grid size must be (width, height) tuple in {context}"
-    width, height = grid_size
-    assert width > 0 and height > 0, f"Invalid grid dimensions {grid_size} in {context}"
-    logging.debug(f"{context}: Using grid (width={width}, height={height})")
-    return width, height
+# ✅ ALWAYS: grid_size represents (width, height)
+grid_size: Tuple[int, int] = (width, height)  # Width first, height second
+```
 
-# Use this EVERYWHERE grid_size is processed
-grid_width, grid_height = validate_grid_coordinates(config.grid_size, "island_model")
+##### **2. Variable Extraction with Validation**
+```python
+# ✅ REQUIRED: Use validation utilities - NEVER extract directly
+from utils.coordinate_validation import validate_grid_coordinates
+
+width, height = validate_grid_coordinates(grid_size, "component_name")
+
+# ❌ FORBIDDEN: Direct extraction causes systematic confusion
+grid_width, grid_height = grid_size  # NEVER DO THIS
+width, height = grid_size            # NEVER DO THIS
+```
+
+##### **3. Array Operations - NumPy Convention**
+```python
+# ✅ CORRECT: NumPy arrays use (height, width) shape
+individual = np.random.randint(0, n, size=(height, width))
+target_tiles = np.zeros((height, width, tile_h, tile_w, 3))
+
+# ✅ CORRECT: Array access uses (row, col) = (i, j) indexing
+for i in range(height):      # i iterates through rows (height dimension)
+    for j in range(width):   # j iterates through columns (width dimension)
+        value = array[i, j]  # array[row, col]
+```
+
+##### **4. Coordinate Variable Naming Standards**
+```python
+# ✅ PREFERRED: Clear dimension names
+height, width = validate_grid_coordinates(grid_size, context)
+rows, cols = height, width
+
+# ✅ ACCEPTABLE: When using grid_* prefix (only after validation)
+grid_height, grid_width = height, width
+
+# ❌ FORBIDDEN: Direct extraction or mixed naming
+grid_width, grid_height = grid_size  # Causes systematic errors
+grid_width = height   # Variable named opposite to content
+```
+
+##### **5. Required Validation Functions**
+```python
+# ✅ MANDATORY: Import and use these utilities
+from utils.coordinate_validation import (
+    validate_grid_coordinates,
+    validate_individual_shape,
+    validate_array_compatibility,
+    ensure_coordinate_consistency,
+    log_coordinate_interpretation
+)
+
+# Component initialization pattern
+def __init__(self, config):
+    self.width, self.height = validate_grid_coordinates(
+        config.grid_size, self.__class__.__name__
+    )
+    log_coordinate_interpretation(config.grid_size, self.__class__.__name__)
+
+# Array creation pattern
+width, height = validate_grid_coordinates(grid_size, context)
+array = np.zeros((height, width, ...))  # NumPy: (rows, cols, ...)
+validate_individual_shape(array, grid_size, context)
+
+# Cross-component validation
+ensure_coordinate_consistency(
+    config_grid_size, individual_array, target_array, component_name
+)
+```
+
+##### **6. Coordinate System Mappings**
+```python
+# Configuration → Array Shape conversion
+config_grid_size = (width, height)     # Configuration: (30, 40)
+array_shape = (height, width)          # NumPy arrays: (40, 30)
+
+# Conversion utilities
+from utils.coordinate_validation import (
+    convert_config_to_array_shape,
+    convert_array_shape_to_config
+)
+```
+
+##### **7. FORBIDDEN Patterns - Never Use These**
+```python
+# ❌ NEVER: Direct grid size extraction
+grid_width, grid_height = self.grid_size
+w, h = grid_size
+
+# ❌ NEVER: Mixed coordinate systems in same component
+grid_height, grid_width = individual.shape  # Gets from array
+grid_width, grid_height = self.grid_size    # Gets from config
+
+# ❌ NEVER: Variables named opposite to their content
+grid_width = height   # grid_width contains height value
+grid_height = width   # grid_height contains width value
+```
+
+##### **8. Automated Coordinate System Checks**
+```bash
+# Add to audit script - search for forbidden patterns
+grep -r "grid_width.*grid_height.*=.*grid_size" --include="*.py" .
+grep -r "width.*height.*=.*grid_size" --include="*.py" . | grep -v validate_grid_coordinates
 ```
 
 #### **Interface Boundary Validation**
@@ -426,7 +550,7 @@ def good_integration(migration_data):
 ```
 
 ### **Mandatory Integration Testing**
-**Based on TECH_DEBT.md analysis: 75% of errors occur at component boundaries**
+**Based on docs/TECH_DEBT.md analysis: 75% of errors occur at component boundaries**
 
 #### **Integration Test Requirements**
 - **MANDATORY**: Test all cross-component interactions before deployment

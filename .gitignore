@@ -307,8 +307,8 @@ secrets.json
 !CLAUDE.md
 !CODING_GUIDELINES.md
 !DEVELOPER_GUIDELINES.md
-!TECH_DEBT.md
-!DEBUGGING.md
+!docs/TECH_DEBT.md
+!docs/DEBUGGING.md
 
 # Keep example scripts and configs
 !examples/**
