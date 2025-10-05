@@ -27,6 +27,7 @@
 - [Lineage Tracking Performance Debugging](#-lineage-tracking-performance-debugging-2025-09-23)
 - [GPU Evaluator IndexError Debugging](#-gpu-evaluator-indexerror-debugging-2025-09-23)
 - [Migration Event Annotations Feature](#-migration-event-annotations-feature-implemented-2025-09-23)
+- [Convergence Criteria Logic Bug](#-convergence-criteria-logic-bug-2025-10-05)
 
 ### **🛡️ Prevention and Maintenance**
 - [Error Prevention Strategies](#️-error-prevention-strategies-implemented-2025-09-23)
@@ -79,6 +80,10 @@ The system uses a **genetic algorithm** to evolve optimal arrangements of source
 - **LRU Cache**: Should speed up repeated image processing operations
 - **Intelligent Restart**: Should restart population during stagnation periods
 
+#### **Algorithm Control Systems** (These have bugs 🐛):
+- **Convergence Criteria**: Should trigger early stopping when improvements become small
+- **Early Stopping Logic**: Counter reset/increment contradiction prevents accumulation
+
 #### **Configuration Systems** (These have bugs 🐛):
 - **Directory Naming**: Should use user-configured directory names
 - **Alert Thresholds**: Should provide meaningful warnings without excessive false positives
@@ -95,6 +100,7 @@ The system uses a **genetic algorithm** to evolve optimal arrangements of source
 | **Component Tracking** | 3 component visualizations | 0 component visualizations | ❌ **Broken** |
 | **Configuration** | Use "lineage_comprehensive" directory | Creates "lineage/" directory | 🐛 **Buggy** |
 | **Checkpoint System** | Save checkpoints every 25 generations | No checkpoints saved despite config | ❌ **Broken** |
+| **Convergence Criteria** | Stop when improvement < 0.001 for 50 gen | Runs all 1000 gen despite convergence | 🐛 **Logic Bug** |
 | **Alerts** | Meaningful warnings | 98% false positive rate | 🐛 **Miscalibrated** |
 | **Image Geometry** | 30×40 grid → 960×1280 portrait output | 1280×960 landscape output | 🐛 **Wrong orientation** |
 
@@ -2362,6 +2368,162 @@ if self.use_island_model:
 - **Inter-island diversity plots** - Show diversity differences between islands
 - **Migration flow diagrams** - Visual representation of migration patterns
 - **Adaptive migration intervals** - Dynamic migration timing based on stagnation
+
+---
+
+## 🔄 **Convergence Criteria Logic Bug (2025-10-05)**
+
+### **Problem Discovery**
+
+**Context**: 8-day running simulation (output_20250926_102040) with 1000 max generations
+
+**Symptoms**:
+- Simulation running for 8+ days despite appearing to converge
+- Fitness improvements became very small (< 0.001) around generation 400-450
+- Early stopping never triggered despite `convergence_threshold: 0.001` and `early_stopping_patience: 50`
+- Expected early stopping around generation 450-500, but simulation continued
+
+### **Investigation**
+
+#### **Step 1: Analyze Fitness Progression**
+```bash
+# Extract generation fitness data
+grep "Generation" nohup.out | tail -20
+
+# Analyze improvement rates
+python3 << 'EOF'
+with open('nohup.out', 'r') as f:
+    lines = f.readlines()
+
+generations = []
+fitness_values = []
+
+for line in lines:
+    if line.startswith("Generation"):
+        parts = line.strip().split()
+        gen_num = int(parts[1].rstrip(':'))
+        fitness = float(parts[4])
+        generations.append(gen_num)
+        fitness_values.append(fitness)
+
+# Calculate recent improvements
+print("Recent improvements:")
+for i in range(-10, 0):
+    if i > -len(fitness_values):
+        improvement = fitness_values[i-1] - fitness_values[i]
+        print(f"Gen {generations[i]:3d}: {improvement:.6f}")
+EOF
+```
+
+**Findings**:
+- 7 out of last 10 improvements were below 0.001 threshold
+- Improvements like 0.000159, 0.000415, 0.000489, 0.000121
+- Pattern of small continuous improvements preventing early stopping
+
+#### **Step 2: Examine Convergence Logic**
+```bash
+# Find convergence checking code
+grep -n "convergence_threshold" image_collage/core/collage_generator.py
+grep -A 10 -B 5 "generations_without_improvement" image_collage/core/collage_generator.py | head -30
+```
+
+**Location**: `image_collage/core/collage_generator.py:369-372` and `:670-673`
+
+**Code Found**:
+```python
+if current_best_fitness < best_fitness:
+    improvement = best_fitness - current_best_fitness
+    best_fitness = current_best_fitness
+    best_individual = current_best_individual.copy()
+    generations_without_improvement = 0           # ⚠️ RESET to 0
+
+    if improvement < self.config.genetic_params.convergence_threshold:
+        generations_without_improvement += 1      # ⚠️ IMMEDIATELY INCREMENT to 1
+else:
+    generations_without_improvement += 1
+```
+
+### **Root Cause Identified**
+
+**Logic Contradiction**:
+1. Line 367/667: When improvement occurs, counter resets to 0
+2. Line 370/670: If improvement < threshold, counter increments to 1
+3. Result: Counter can never accumulate when small improvements keep occurring
+4. Outcome: Early stopping never triggers during "soft convergence"
+
+**Why This Breaks Early Stopping**:
+```
+Gen 450: improvement = 0.000159 → counter: 0 → 1 (small improvement)
+Gen 475: improvement = 0.000000 → counter: 1 → 2 (no improvement)
+Gen 500: improvement = 0.000415 → counter: 0 → 1 (small improvement, RESET!)
+Gen 525: improvement = 0.000489 → counter: 0 → 1 (small improvement, RESET!)
+Gen 550: improvement = 0.000121 → counter: 0 → 1 (small improvement, RESET!)
+
+Counter never reaches early_stopping_patience = 50
+```
+
+### **Impact Assessment**
+
+- **Computational Waste**: Simulations run to max_generations despite effective convergence
+- **Resource Inefficiency**: 8-day runs that should stop in 4 days
+- **Misleading Configuration**: Users expect convergence_threshold to work but it's contradictory
+- **All Long-Running Simulations Affected**: Any run with small continuous improvements
+
+### **Recommended Fix**
+
+**Approach**: Only reset counter for significant improvements
+
+```python
+# Proposed fix (image_collage/core/collage_generator.py:364-373)
+if current_best_fitness < best_fitness:
+    improvement = best_fitness - current_best_fitness
+    best_fitness = current_best_fitness
+    best_individual = current_best_individual.copy()
+
+    # Only reset counter if improvement is significant
+    if improvement >= self.config.genetic_params.convergence_threshold:
+        generations_without_improvement = 0
+    else:
+        # Small improvement - increment counter toward early stopping
+        generations_without_improvement += 1
+else:
+    generations_without_improvement += 1
+```
+
+**Alternative Approaches**:
+1. Separate counters for "no improvement" vs "small improvement"
+2. Cumulative small improvements until they exceed threshold
+3. Patience-based counting of all sub-threshold improvements
+
+### **Validation Testing**
+
+After fix, test with known converged simulation:
+```bash
+# Test with preset that should converge quickly
+image-collage generate target.jpg sources/ test_convergence.png \
+  --preset quick \
+  --convergence-threshold 0.001 \
+  --early-stopping-patience 20 \
+  --verbose | tee convergence_test.log
+
+# Verify early stopping triggered
+grep "Early stopping" convergence_test.log
+grep "generations without improvement" convergence_test.log
+
+# Check that it stopped before max generations
+tail -20 convergence_test.log
+```
+
+**Expected Results**:
+- Early stopping message appears
+- Simulation stops well before max_generations when fitness plateaus
+- Counter accumulates properly during soft convergence
+
+### **Documentation Updates**
+
+See also:
+- **TECH_DEBT.md**: Added to Critical Priority Items section
+- **TROUBLESHOOTING.md**: Added to "Simulation Won't Stop" section
 
 ---
 
