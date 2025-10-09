@@ -90,6 +90,107 @@ This document outlines potential future enhancements and improvements for the Im
 ## 🔧 Technical Improvements
 
 ### 7. Performance Optimizations
+
+#### 🔥 **Tile-Based Fitness Caching** - HIGHEST IMPACT OPTIMIZATION
+**Priority**: ⭐⭐⭐⭐⭐ **CRITICAL** - Single biggest performance improvement available
+**Impact**: 78% runtime reduction (10.8 days → 2.4 days for large runs)
+**Effort**: 10-15 hours implementation
+**ROI**: 13:1 - saves 200 hours per run, costs 15 hours to implement
+
+**Problem**:
+Current fitness evaluation recomputes all tile comparisons every generation, even though:
+- 75% of new individuals (crossover children) inherit 100% of tiles from parents
+- 20% of individuals (elites) are unchanged from previous generation
+- 5% of individuals (mutations) only change ~5% of tiles
+- Result: 85-95% of tile fitness calculations could be cached but aren't
+
+**Solution - Decompose Fitness to Tile Level**:
+```python
+# Current approach (SLOW):
+individual_fitness = evaluate_full_image(assemble_all_tiles(individual))
+# Recomputes ALL tile comparisons every time
+
+# Tile-cached approach (FAST):
+tile_scores = [cache.get_or_compute(pos, source_id, target[pos])
+               for pos, source_id in individual]
+individual_fitness = aggregate_cached_tiles(tile_scores)
+# 85-95% cache hits after generation 1!
+```
+
+**Fitness Component Decomposability**:
+- ✅ **Color Similarity (40% weight)**: Perfectly tile-decomposable
+  - Per-tile CIEDE2000, aggregate with mean
+  - 100% cacheable, zero accuracy loss
+- ✅ **Luminance Matching (25% weight)**: Perfectly tile-decomposable
+  - Per-tile luminance difference, aggregate with mean
+  - 100% cacheable, zero accuracy loss
+- ⚠️ **Texture Correlation (20% weight)**: Tile-local approximation
+  - Local Binary Patterns per tile
+  - 95% cacheable, ~5% accuracy loss (acceptable tradeoff)
+- ⚠️ **Edge Preservation (15% weight)**: Hybrid approach needed
+  - Cache tile-interior edges (70% of edges)
+  - Compute tile-boundary edges fresh (30% of edges)
+  - 70% cacheable with boundary correction
+
+**Cache Performance by Generation Phase**:
+
+*Generations 1-50 (low convergence, 75% cache hit)*:
+- Speedup: 2.75x (1,372s → 498s per generation)
+- Cache saves: Color/luminance mostly cached from parent tiles
+
+*Generations 51-200 (medium convergence, 85% cache hit)*:
+- Speedup: 3.6x (1,372s → 381s per generation)
+- Population similarity increases, more tile reuse
+
+*Generations 201-679 (high convergence, 95% cache hit)*:
+- Speedup: 5.2x (1,372s → 265s per generation)
+- Maximum cache efficiency as population converges
+
+**Expected Results** (60×80 grid, 679 generations):
+- Current: 931,609s (10.8 days)
+- With caching: 210,357s (2.4 days)
+- Time saved: 8.4 days per run (78% reduction)
+
+**Memory Requirements**:
+- Cache size: 4,800 positions × 500 sources × 16 bytes = 38MB
+- Completely manageable, fits easily in RAM
+
+**Implementation Phases**:
+1. **Phase 1**: Core tile caching for color/luminance (8 hours)
+   - Implement TileFitnessCache class
+   - Cache (grid_pos, source_id, target_features) → fitness_components
+   - Expected: 62% of fitness computation eliminated
+2. **Phase 2**: Texture tile-local approximation (3 hours)
+   - Validate correlation with full-image texture (>0.90)
+   - Expected: Additional 18% speedup
+3. **Phase 3**: Edge hybrid calculation (4 hours)
+   - 70% cached tile-interior, 30% boundary computation
+   - Expected: Additional 10% speedup
+
+**Validation Strategy**:
+- Correlation test: cached fitness vs original fitness (>0.98 required)
+- Evolution trajectory comparison: should converge to similar results
+- Small run validation (50 gens) before deploying to long runs
+
+**Combined with Other Optimizations**:
+- Convergence fix (✅ already implemented): Stop early when converged
+- Tile caching: 78% reduction on actual generations run
+- **Total potential**: 10.8 days → 1.5 days (86% total reduction)
+
+**Files to Modify**:
+- `image_collage/cache/fitness_cache.py` - New tile-based cache implementation
+- `image_collage/fitness/evaluator.py` - Decompose fitness to tile level
+- `image_collage/fitness/gpu_evaluator.py` - GPU-accelerated tile caching
+- `image_collage/config/settings.py` - Add tile cache configuration options
+
+**Related Issues**:
+- See TECH_DEBT.md: LRU Cache Investigation - current cache only helps source loading
+- See DEBUGGING.md: Cache investigation revealed opportunity for tile-level caching
+
+---
+
+#### Other Performance Optimizations
+
 - **JIT Compilation**: Integrate Numba for just-in-time compilation
 - **Vectorized Operations**: Further optimize array operations
 - **Memory Mapping**: Use memory-mapped files for massive source collections
