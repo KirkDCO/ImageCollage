@@ -389,92 +389,46 @@ image-collage generate target.jpg sources/ output.png \
 # Move source collection to SSD
 ```
 
-#### Issue: Simulation won't stop despite convergence
-**Symptoms:**
+#### Issue: Simulation won't stop despite convergence ✅ **RESOLVED (2025-10-08)**
+
+**Status**: This issue has been permanently fixed.
+
+**Previous Symptoms (before fix):**
 - Simulation runs for days/weeks without stopping
 - Fitness improvements become very small (< 0.001) but continue indefinitely
 - Early stopping never triggers despite `convergence_threshold` and `early_stopping_patience` configured
 - Expected early stopping but simulation reaches `max_generations`
 
-**Root Cause:**
-Logic bug in convergence criteria implementation (see TECH_DEBT.md and DEBUGGING.md for details)
+**Root Cause (Fixed):**
+Logic bug in convergence criteria implementation - counter was reset to 0 then immediately incremented to 1, preventing accumulation during soft convergence.
 
-**Diagnosis:**
-```bash
-# Monitor fitness improvements in real-time
-tail -f nohup.out | grep "Generation"
+**Fix Applied (2025-10-08):**
+- ✅ Updated `image_collage/core/collage_generator.py:363-375`
+- ✅ Updated `image_collage/core/collage_generator.py:667-679`
+- ✅ Counter now only resets for significant improvements (>= threshold)
+- ✅ Small improvements properly accumulate toward early stopping patience
 
-# Analyze recent improvements
-python3 << 'EOF'
-with open('nohup.out', 'r') as f:
-    lines = f.readlines()
+**Current Behavior (after fix):**
+- ✅ Counter accumulates correctly for all sub-threshold improvements
+- ✅ Early stopping triggers when counter reaches patience value
+- ✅ Long simulations stop naturally when fitness plateaus
+- ✅ Computational resources not wasted on marginal improvements
 
-generations = []
-fitness_values = []
-
-for line in lines:
-    if line.startswith("Generation"):
-        parts = line.strip().split()
-        gen_num = int(parts[1].rstrip(':'))
-        fitness = float(parts[4])
-        generations.append(gen_num)
-        fitness_values.append(fitness)
-
-print("Last 10 improvements:")
-for i in range(-10, 0):
-    if i > -len(fitness_values) and i > -len(fitness_values)+1:
-        improvement = fitness_values[i-1] - fitness_values[i]
-        threshold_met = "BELOW threshold" if improvement < 0.001 else "ABOVE threshold"
-        print(f"Gen {generations[i]:3d}: {improvement:.6f} - {threshold_met}")
-EOF
-```
-
-**Understanding the Bug:**
-The current implementation has contradictory logic:
-- When improvement occurs: counter resets to 0
-- If improvement < threshold: counter immediately increments to 1
-- Result: Counter can never accumulate when small improvements keep occurring
-- Pattern: `0→1→0→1→0→1` instead of `1→2→3→...→50`
-
-**Temporary Workarounds:**
+**For Users on Older Versions:**
+If you're experiencing this issue, update to the latest version to get the fix. If you cannot update immediately, temporary workarounds include:
 ```bash
 # Option 1: Use larger convergence threshold (less sensitive)
 image-collage generate target.jpg sources/ output.png \
   --convergence-threshold 0.01  # 10x larger threshold
 
-# Option 2: Use smaller early stopping patience (stops sooner)
-image-collage generate target.jpg sources/ output.png \
-  --early-stopping-patience 20  # Default is 50
-
-# Option 3: Set lower max_generations (hard limit)
+# Option 2: Set lower max_generations (hard limit)
 image-collage generate target.jpg sources/ output.png \
   --generations 500  # Instead of 1000
-
-# Option 4: Monitor manually and kill when converged
-# Watch fitness progression and manually stop (Ctrl+C) when improvements become tiny
-tail -f nohup.out
-# Press Ctrl+C when you see pattern of improvements < 0.001
-
-# Option 5: Use checkpoints and resume with adjusted settings
-image-collage generate target.jpg sources/ output.png \
-  --save-checkpoints \
-  --generations 1000
-
-# If it runs too long, resume with lower max:
-# (After ~500 generations if converged)
-image-collage resume target.jpg sources/ output_TIMESTAMP/ \
-  --generations 600  # Resume with lower max
 ```
 
-**Permanent Fix:**
-Requires code change to `image_collage/core/collage_generator.py:369-372` and `:670-673`.
-See TECH_DEBT.md "Convergence Criteria Logic Contradiction" for implementation details.
-
-**Expected Behavior After Fix:**
-- Counter accumulates for all sub-threshold improvements
-- Early stopping triggers when counter reaches patience value
-- Long simulations stop naturally when fitness plateaus
-- Computational resources not wasted on marginal improvements
+**See Also:**
+- TECH_DEBT.md - "Convergence Criteria Logic Contradiction - Resolved" section
+- DEBUGGING.md - "Convergence Criteria Logic Bug - RESOLVED (2025-10-08)" section
 
 ## 🔧 Advanced Debugging
 

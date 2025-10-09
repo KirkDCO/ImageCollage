@@ -364,9 +364,12 @@ class CollageGenerator:
                 improvement = best_fitness - current_best_fitness
                 best_fitness = current_best_fitness
                 best_individual = current_best_individual.copy()
-                generations_without_improvement = 0
-                
-                if improvement < self.config.genetic_params.convergence_threshold:
+
+                # Only reset counter if improvement is significant
+                # Small improvements count toward early stopping
+                if improvement >= self.config.genetic_params.convergence_threshold:
+                    generations_without_improvement = 0
+                else:
                     generations_without_improvement += 1
             else:
                 generations_without_improvement += 1
@@ -665,9 +668,12 @@ class CollageGenerator:
                 improvement = best_fitness - current_best_fitness
                 best_fitness = current_best_fitness
                 best_individual = current_best_individual.copy()
-                generations_without_improvement = 0
 
-                if improvement < self.config.genetic_params.convergence_threshold:
+                # Only reset counter if improvement is significant
+                # Small improvements count toward early stopping
+                if improvement >= self.config.genetic_params.convergence_threshold:
+                    generations_without_improvement = 0
+                else:
                     generations_without_improvement += 1
             else:
                 generations_without_improvement += 1
