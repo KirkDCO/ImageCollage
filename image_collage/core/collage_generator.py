@@ -276,14 +276,14 @@ class CollageGenerator:
 
         self.ga_engine.initialize_population(len(self.source_images))
 
-        # Initialize checkpoint manager if requested
+        # Initialize checkpoint manager if requested (via CLI or config)
         checkpoint_manager = None
-        if save_checkpoints and CHECKPOINTS_AVAILABLE and output_folder:
+        if (save_checkpoints or self.config.enable_checkpoints) and CHECKPOINTS_AVAILABLE and output_folder:
             try:
                 checkpoint_dir = Path(output_folder) / "checkpoints"
                 checkpoint_manager = CheckpointManager(
                     str(checkpoint_dir),
-                    save_interval=checkpoint_interval,
+                    save_interval=checkpoint_interval if checkpoint_interval != 10 else self.config.checkpoint_interval,
                     max_checkpoints=self.config.max_checkpoints
                 )
                 print(f"Checkpoint saving enabled: {checkpoint_dir}")

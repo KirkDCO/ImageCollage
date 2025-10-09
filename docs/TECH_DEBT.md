@@ -10,7 +10,6 @@
 ### [2. 🚨 CRITICAL PRIORITY ITEMS](#2--critical-priority-items)
 - [Island Model Migration System Failure](#island-model-migration-system-failure)
 - [LRU Cache Performance System Failure](#lru-cache-performance-system-failure)
-- [Checkpoint System Configuration Bug](#checkpoint-system-configuration-bug)
 - [Configuration Architecture Inconsistency](#configuration-architecture-inconsistency)
 
 ### [3. ⚠️ HIGH PRIORITY ITEMS](#3-️-high-priority-items)
@@ -36,6 +35,7 @@
 - [Coordinate System Crisis - Completely Resolved](#coordinate-system-crisis---completely-resolved)
 - [Genetic Algorithm vs. Rendering Interpretation Mismatch - Resolved](#genetic-algorithm-vs-rendering-interpretation-mismatch---resolved)
 - [Convergence Criteria Logic Contradiction - Resolved](#convergence-criteria-logic-contradiction---resolved)
+- [Checkpoint System Configuration Bug - Resolved](#checkpoint-system-configuration-bug---resolved)
 - [Lineage Tracking System Integration - Resolved](#lineage-tracking-system-integration---resolved)
 - [Fitness Evaluator Grid Bounds Error - Resolved](#fitness-evaluator-grid-bounds-error---resolved)
 - [GPU Evaluator Grid Bounds Error - Resolved](#gpu-evaluator-grid-bounds-error---resolved)
@@ -161,30 +161,6 @@ Generations 21-500: 61.3-62.8s per generation (NO IMPROVEMENT)
 2. Check `image_collage/preprocessing/` - Image loading and caching
 3. Verify performance monitoring and cache hit rate tracking
 4. Test cache initialization and eviction patterns
-
-### Checkpoint System Configuration Bug
-
-**Location**: `image_collage/core/collage_generator.py:281`
-**Status**: 🚨 **CRITICAL** - Core crash recovery feature non-functional via configuration
-**Discovered**: Active simulation analysis (output_20250924_210948)
-**Root Cause Identified**: Configuration parameter ignored by implementation
-
-**Issue Analysis**:
-- **Configuration Setting**: `enable_checkpoints: true` in comprehensive_testing.yaml ✅ **SET CORRECTLY**
-- **Runtime Behavior**: No checkpoint directory created despite 275+ generations ❌ **NOT WORKING**
-- **Code Implementation**: Only checks CLI parameter `save_checkpoints`, ignores config setting ❌ **BUG**
-- **Impact**: Long-running simulations lose crash recovery capability despite explicit configuration
-
-**Required Implementation Fix**:
-```python
-# File: image_collage/core/collage_generator.py
-# Line: 281
-# Current (WRONG):
-if save_checkpoints and CHECKPOINTS_AVAILABLE and output_folder:
-
-# Required (CORRECT):
-if (save_checkpoints or self.config.enable_checkpoints) and CHECKPOINTS_AVAILABLE and output_folder:
-```
 
 ### Configuration Architecture Inconsistency
 
@@ -758,6 +734,80 @@ Expected: If fitness improvements remain below 0.001 for 50 consecutive generati
 - ✅ **Resource savings**: No more wasted days on marginal improvements
 - ✅ **Correct behavior**: convergence_threshold parameter now works as documented
 - ✅ **User experience**: Long simulations complete in appropriate timeframe
+
+### Checkpoint System Configuration Bug - Resolved
+
+**Status**: 🟢 **COMPLETELY RESOLVED**
+**Resolution Date**: 2025-10-08
+**Scope**: Checkpoint system now respects configuration file settings
+**Previously Listed**: CRITICAL PRIORITY (Section 2)
+
+**Original Issue Description**:
+The checkpoint system was completely non-functional when enabled via configuration files (YAML). Users who set `enable_checkpoints: true` in their configs experienced silent failure - no checkpoints were created, and long-running simulations had no crash recovery protection despite explicit configuration.
+
+**Root Cause**:
+The implementation only checked the CLI parameter `save_checkpoints`, completely ignoring the `self.config.enable_checkpoints` setting:
+
+```python
+# WRONG PATTERN (ignored config):
+if save_checkpoints and CHECKPOINTS_AVAILABLE and output_folder:
+    # Initialize checkpoint manager
+```
+
+**Real-World Impact**:
+- **Silent failure**: Users believed checkpoints were enabled but had no protection
+- **Lost work**: Multi-day simulations vulnerable to crashes without recovery
+- **Configuration ignored**: `enable_checkpoints: true` in YAML had no effect
+- **Trust issue**: Users can't rely on configuration files for critical features
+
+**Resolution Details**:
+Fixed to check both CLI parameter and configuration setting:
+
+```python
+# CORRECT PATTERN (now implemented):
+if (save_checkpoints or self.config.enable_checkpoints) and CHECKPOINTS_AVAILABLE and output_folder:
+    checkpoint_manager = CheckpointManager(
+        str(checkpoint_dir),
+        save_interval=checkpoint_interval if checkpoint_interval != 10 else self.config.checkpoint_interval,
+        max_checkpoints=self.config.max_checkpoints
+    )
+```
+
+**Additional Improvements**:
+- ✅ Also fixed `checkpoint_interval` to respect config value when CLI uses default
+- ✅ Both CLI and config paths now work correctly
+- ✅ Config values properly propagate to CheckpointManager initialization
+
+**Files Modified**:
+- ✅ `image_collage/core/collage_generator.py:281` - Enable condition fixed
+- ✅ `image_collage/core/collage_generator.py:286` - Interval parameter fixed
+
+**Expected Behavior After Fix**:
+- ✅ **Config files work**: `enable_checkpoints: true` now activates checkpoint system
+- ✅ **CLI still works**: `--save-checkpoints` flag continues to function
+- ✅ **Proper intervals**: `checkpoint_interval` config value properly used
+- ✅ **Crash protection**: Long runs have automatic recovery capability
+
+**Validation Testing**:
+To verify the fix works:
+```bash
+# Test with config file (previously broken)
+image-collage generate target.jpg sources/ output.png --config comprehensive_testing.yaml
+
+# Should see: "Checkpoint saving enabled: output_TIMESTAMP/checkpoints"
+# Should create: output_TIMESTAMP/checkpoints/ directory with .pkl files
+```
+
+**Benefits**:
+- ✅ **Crash recovery**: All long runs now protected by configuration
+- ✅ **Configuration trust**: YAML config files work as documented
+- ✅ **User experience**: No silent failures, features work as expected
+- ✅ **Data safety**: Multi-day simulations can recover from interruptions
+
+**Related Issues**:
+- Part of broader Configuration Architecture Inconsistency (Section 2)
+- Similar pattern likely exists for other configuration parameters
+- Demonstrates need for systematic config propagation validation
 
 ---
 
